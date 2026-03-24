@@ -123,6 +123,14 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
 .btn-orange:hover{background:rgba(255,149,0,.08);border-color:var(--orange);}
 .btn-export{border-color:rgba(200,255,0,.5);color:var(--acid);background:rgba(200,255,0,.04);text-shadow:0 0 6px rgba(200,255,0,.3);}
 .btn-export:hover{background:rgba(200,255,0,.12);border-color:var(--acid);box-shadow:0 0 16px rgba(200,255,0,.35),inset 0 0 10px rgba(200,255,0,.05);text-shadow:0 0 10px rgba(200,255,0,.6);}
+.export-group{display:flex;align-items:center;gap:0;}
+.export-group select{font-size:7.5px;padding:5px 6px;width:auto;background:rgba(200,255,0,.04);border:1px solid rgba(200,255,0,.35);border-right:none;color:var(--acid);clip-path:polygon(4px 0%,100% 0%,100% 100%,0% 100%);cursor:pointer;letter-spacing:1px;}
+.export-group select:focus{outline:none;border-color:var(--acid);}
+.export-group .btn-export{clip-path:polygon(0% 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);}
+.btn-undo{border-color:rgba(189,208,224,.2);color:var(--chrome);font-size:10px;padding:4px 9px;}
+.btn-undo:hover{border-color:var(--chrome);color:var(--chrome3);background:rgba(255,255,255,.04);}
+.btn-undo:disabled{opacity:.25;cursor:default;pointer-events:none;}
+@keyframes undoFlash{0%{background:rgba(0,229,255,.15);box-shadow:0 0 12px rgba(0,229,255,.3);}100%{background:transparent;}}
 .btn-sm{padding:3px 8px;font-size:7px;}
 .btn-icon{padding:4px 8px;font-size:11px;}
 .btn-full{width:100%;text-align:center;clip-path:none;padding:7px;}
@@ -331,9 +339,19 @@ select:focus{border-color:var(--cyan);}
   <div class="vsep"></div>
   <button class="btn btn-acid" id="btnRandomize">⚄ Randomize</button>
   <div class="header-right">
+    <button class="btn btn-undo" id="btnUndo" disabled title="Undo (⌘Z)">⟲</button>
+    <button class="btn btn-undo" id="btnRedo" disabled title="Redo (⌘⇧Z)">⟳</button>
     <button class="btn" id="btnReset">↺ Reset</button>
     <button class="btn btn-mag" id="btnClearWarp">⌫ Warp</button>
-    <button class="btn btn-export" id="btnDownload">↓ Export</button>
+    <div class="export-group">
+      <select id="exportScale" title="Export scale">
+        <option value="1">1×</option>
+        <option value="2">2×</option>
+        <option value="4">4×</option>
+        <option value="0">Original</option>
+      </select>
+      <button class="btn btn-export" id="btnDownload">↓ Export</button>
+    </div>
   </div>
 </header>
 
@@ -783,7 +801,7 @@ function bindSlider(sid, key, fmt) {
     if (L) L.S[key] = v;
     if (vEl) vEl.textContent = fmt ? fmt(v) : v;
     updateSliderFill(el);
-    schedRender();
+    schedRenderWithUndo();
   });
 }
 function bindCB(id, key) {
@@ -792,6 +810,7 @@ function bindCB(id, key) {
   el.addEventListener('change', () => {
     const L = getActiveLayer();
     if (L) L.S[key] = el.checked;
+    pushUndo();
     schedRender();
   });
 }
@@ -801,6 +820,7 @@ function bindSel(id, key) {
   el.addEventListener('change', () => {
     const L = getActiveLayer();
     if (L) L.S[key] = el.value;
+    pushUndo();
     schedRender();
   });
 }
@@ -882,7 +902,7 @@ document.getElementById('s-lbs').addEventListener('input',()=>{
 
 // Layer blend/opacity
 document.getElementById('layerBlend').addEventListener('change', function() {
-  const L = getActiveLayer(); if(L){L.blendMode = this.value; schedRender();}
+  const L = getActiveLayer(); if(L){L.blendMode = this.value; pushUndo(); schedRender();}
 });
 document.getElementById('layerOpacity').addEventListener('input', function() {
   const v = parseInt(this.value);
@@ -893,7 +913,7 @@ document.getElementById('layerOpacity').addEventListener('input', function() {
   clearTimeout(vEl._dt);
   vEl._dt = setTimeout(()=>vEl.classList.remove('dragging'), 600);
   updateSliderFill(this);
-  schedRender();
+  schedRenderWithUndo();
 });
 document.getElementById('maskBrushSize').addEventListener('input', function() {
   maskBrushSz = parseInt(this.value);
@@ -908,15 +928,16 @@ document.getElementById('maskHardness').addEventListener('input', function() {
 
 // Layer buttons
 document.getElementById('btnAddLayer').addEventListener('click', () => {
-  // Add an empty layer — user can drop image on it
   if(!imgW) return;
-  const blank = new Uint8ClampedArray(imgW * imgH * 4); // transparent
+  pushUndo();
+  const blank = new Uint8ClampedArray(imgW * imgH * 4);
   const L = createLayer('Layer '+( layers.length+1), new ImageData(blank, imgW, imgH), imgW, imgH);
   layers.push(L);
   setActiveLayer(layers.length - 1);
 });
 document.getElementById('btnDupLayer').addEventListener('click', () => {
   const L = getActiveLayer(); if(!L) return;
+  pushUndo();
   const copy = JSON.parse(JSON.stringify({...L, S: {...L.S}}));
   copy.id = Date.now() + Math.random();
   copy.name = L.name + ' copy';
@@ -929,24 +950,29 @@ document.getElementById('btnDupLayer').addEventListener('click', () => {
 });
 document.getElementById('btnAddMask').addEventListener('click', () => {
   const L = getActiveLayer(); if(!L) return;
+  pushUndo();
   if(!L.mask){ L.mask = new Float32Array(L.w*L.h).fill(1); }
   schedRender(); renderLayersList();
 });
 document.getElementById('btnDelMask').addEventListener('click', () => {
   const L = getActiveLayer(); if(!L) return;
+  pushUndo();
   L.mask = null;
   schedRender(); renderLayersList();
 });
 document.getElementById('btnClearMask').addEventListener('click', () => {
   const L = getActiveLayer(); if(!L||!L.mask) return;
+  pushUndo();
   L.mask.fill(0); schedRender(); drawMaskOverlay();
 });
 document.getElementById('btnFillMask').addEventListener('click', () => {
   const L = getActiveLayer(); if(!L||!L.mask) return;
+  pushUndo();
   L.mask.fill(1); schedRender(); drawMaskOverlay();
 });
 document.getElementById('btnInvertMask').addEventListener('click', () => {
   const L = getActiveLayer(); if(!L||!L.mask) return;
+  pushUndo();
   for(let i=0;i<L.mask.length;i++) L.mask[i] = 1 - L.mask[i];
   schedRender(); drawMaskOverlay();
 });
@@ -1203,12 +1229,14 @@ document.addEventListener('paste',e=>{const item=[...e.clipboardData.items].find
 // Flip
 document.getElementById('btnFlipH').addEventListener('click',()=>{
   const L=getActiveLayer(); if(!L||!L.origData)return;
+  pushUndo();
   const d=L.origData.data,w=L.w,h=L.h,tmp=new Uint8ClampedArray(d.length);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const si=(y*w+x)*4,di=(y*w+(w-1-x))*4;tmp[di]=d[si];tmp[di+1]=d[si+1];tmp[di+2]=d[si+2];tmp[di+3]=d[si+3];}
   L.origData=new ImageData(tmp,w,h); schedRender();
 });
 document.getElementById('btnFlipV').addEventListener('click',()=>{
   const L=getActiveLayer(); if(!L||!L.origData)return;
+  pushUndo();
   const d=L.origData.data,w=L.w,h=L.h,tmp=new Uint8ClampedArray(d.length);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const si=(y*w+x)*4,di=((h-1-y)*w+x)*4;tmp[di]=d[si];tmp[di+1]=d[si+1];tmp[di+2]=d[si+2];tmp[di+3]=d[si+3];}
   L.origData=new ImageData(tmp,w,h); schedRender();
@@ -1217,22 +1245,157 @@ document.getElementById('btnFlipV').addEventListener('click',()=>{
 // Warp clear/bake
 document.getElementById('btnClearWarp').addEventListener('click',clearWarp);
 document.getElementById('btnClearWarp2').addEventListener('click',clearWarp);
-function clearWarp(){const L=getActiveLayer();if(L&&L.wX){L.wX.fill(0);L.wY.fill(0);L.warpDirty=false;schedRender();}}
+function clearWarp(){const L=getActiveLayer();if(L&&L.wX){pushUndo();L.wX.fill(0);L.wY.fill(0);L.warpDirty=false;schedRender();}}
 document.getElementById('btnBakeWarp').addEventListener('click',()=>{
   const L=getActiveLayer(); if(!L||!L.wX||!L.warpDirty)return;
+  pushUndo();
   L.origData=new ImageData(fxWarp(new Uint8ClampedArray(L.origData.data),L.w,L.h,L.wX,L.wY),L.w,L.h);
   L.wX.fill(0);L.wY.fill(0);L.warpDirty=false; schedRender();
 });
 
-// Download
-document.getElementById('btnDownload').addEventListener('click',()=>{
-  const a=document.createElement('a');a.download='decaylabs-export.png';a.href=dc.toDataURL('image/png');a.click();
+// ══════════════════════════════════════════════════════
+// UNDO / REDO
+// ══════════════════════════════════════════════════════
+const UNDO_LIMIT = 40;
+let undoStack = [];
+let redoStack = [];
+let undoPaused = false;
+
+function snapshotState() {
+  // Deep-clone all layer S states + visibility/opacity/blend (not pixel data — too heavy)
+  return layers.map(L => ({
+    id: L.id,
+    name: L.name,
+    visible: L.visible,
+    opacity: L.opacity,
+    blendMode: L.blendMode,
+    S: JSON.parse(JSON.stringify(L.S)),
+    hasMask: !!L.mask,
+    maskData: L.mask ? L.mask.slice() : null,
+  }));
+}
+
+function restoreState(snap) {
+  snap.forEach(s => {
+    const L = layers.find(l => l.id === s.id);
+    if (!L) return;
+    L.name = s.name;
+    L.visible = s.visible;
+    L.opacity = s.opacity;
+    L.blendMode = s.blendMode;
+    L.S = s.S;
+    L.mask = s.maskData ? new Float32Array(s.maskData) : null;
+  });
+}
+
+function pushUndo() {
+  if (undoPaused) return;
+  undoStack.push(snapshotState());
+  if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  redoStack = [];
+  updateUndoButtons();
+}
+
+function updateUndoButtons() {
+  document.getElementById('btnUndo').disabled = undoStack.length === 0;
+  document.getElementById('btnRedo').disabled = redoStack.length === 0;
+}
+
+function doUndo() {
+  if (!undoStack.length) return;
+  redoStack.push(snapshotState());
+  const snap = undoStack.pop();
+  undoPaused = true;
+  restoreState(snap);
+  undoPaused = false;
+  const L = getActiveLayer(); if (L) syncSidebarFromS(L.S);
+  updateLayerControls();
+  renderLayersList();
+  schedRender();
+  updateUndoButtons();
+  const btn = document.getElementById('btnUndo');
+  btn.style.animation='none'; btn.offsetHeight; btn.style.animation='undoFlash .3s ease-out';
+}
+
+function doRedo() {
+  if (!redoStack.length) return;
+  undoStack.push(snapshotState());
+  const snap = redoStack.pop();
+  undoPaused = true;
+  restoreState(snap);
+  undoPaused = false;
+  const L = getActiveLayer(); if (L) syncSidebarFromS(L.S);
+  updateLayerControls();
+  renderLayersList();
+  schedRender();
+  updateUndoButtons();
+  const btn = document.getElementById('btnRedo');
+  btn.style.animation='none'; btn.offsetHeight; btn.style.animation='undoFlash .3s ease-out';
+}
+
+document.getElementById('btnUndo').addEventListener('click', doUndo);
+document.getElementById('btnRedo').addEventListener('click', doRedo);
+
+document.addEventListener('keydown', e => {
+  const meta = e.metaKey || e.ctrlKey;
+  if (meta && e.key === 'z' && !e.shiftKey) { e.preventDefault(); doUndo(); }
+  if (meta && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); doRedo(); }
+});
+
+// Hook pushUndo into every slider/toggle/select change
+// Wrap schedRender to auto-push on meaningful changes
+let _undoTimer = null;
+const _origSchedRender = schedRender;
+function schedRenderWithUndo() {
+  // Debounce: push undo snapshot 600ms after last change
+  clearTimeout(_undoTimer);
+  _undoTimer = setTimeout(() => { if (!undoPaused) pushUndo(); }, 600);
+  _origSchedRender();
+}
+
+// ══════════════════════════════════════════════════════
+// EXPORT WITH SCALE
+// ══════════════════════════════════════════════════════
+document.getElementById('btnDownload').addEventListener('click', () => {
+  const scaleVal = parseFloat(document.getElementById('exportScale').value);
+  const comp = compositeAll(imgW, imgH);
+
+  // Determine output size
+  let outW, outH;
+  if (scaleVal === 0) {
+    // Original size — use first layer's native dims
+    const L = getActiveLayer();
+    outW = L ? L.w : imgW;
+    outH = L ? L.h : imgH;
+  } else {
+    outW = Math.round(imgW * scaleVal);
+    outH = Math.round(imgH * scaleVal);
+  }
+
+  // Draw composited result into an offscreen canvas at output size
+  const exportC = document.createElement('canvas');
+  exportC.width = outW; exportC.height = outH;
+  const exportX = exportC.getContext('2d');
+
+  // Put current composite at canvas size, then scale up
+  const tmpC = document.createElement('canvas');
+  tmpC.width = imgW; tmpC.height = imgH;
+  tmpC.getContext('2d').putImageData(new ImageData(comp, imgW, imgH), 0, 0);
+
+  exportX.imageSmoothingEnabled = false; // keep pixelated look
+  exportX.drawImage(tmpC, 0, 0, outW, outH);
+
+  const scaleLabel = scaleVal === 0 ? 'orig' : scaleVal+'x';
+  const a = document.createElement('a');
+  a.download = `corrupt-export-${scaleLabel}.png`;
+  a.href = exportC.toDataURL('image/png');
+  a.click();
 });
 
 // Reset active layer
 document.getElementById('btnReset').addEventListener('click',()=>{
   const L=getActiveLayer(); if(!L)return;
-  L.S=defaultS(); syncSidebarFromS(L.S); schedRender();
+  pushUndo(); L.S=defaultS(); syncSidebarFromS(L.S); schedRender();
 });
 
 // ══════════════════════════════════════════════════════
@@ -1415,8 +1578,14 @@ dc.addEventListener('mousemove',e=>{
   if(L._warpStart){ paintBrush(L,p.x,p.y,p.x-L._warpStart.x,p.y-L._warpStart.y); schedRender(); }
   L._warpStart=p;
 });
-dc.addEventListener('mouseup',()=>{isPainting=false;const L=getActiveLayer();if(L)L._isWarping=false;});
-dc.addEventListener('mouseleave',()=>{isPainting=false;const L=getActiveLayer();if(L)L._isWarping=false;});
+dc.addEventListener('mouseup',()=>{
+  if(isPainting && maskPaintMode) pushUndo();
+  isPainting=false;const L=getActiveLayer();if(L)L._isWarping=false;
+});
+dc.addEventListener('mouseleave',()=>{
+  if(isPainting && maskPaintMode) pushUndo();
+  isPainting=false;const L=getActiveLayer();if(L)L._isWarping=false;
+});
 
 // Touch
 dc.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];const rect=dc.getBoundingClientRect();const p={x:Math.round((t.clientX-rect.left)*imgW/rect.width),y:Math.round((t.clientY-rect.top)*imgH/rect.height)};if(maskPaintMode){const L=getActiveLayer();if(L&&!L.mask)L.mask=new Float32Array(L.w*L.h).fill(1);isPainting=true;paintMask(p.x,p.y);}else{const L=getActiveLayer();if(L){L._warpStart=p;L._isWarping=true;}}},{passive:false});
@@ -1823,6 +1992,7 @@ function fxAscii(d, w, h, S) {
 // ══════════════════════════════════════════════════════
 document.getElementById('btnRandomize').addEventListener('click', () => {
   const L = getActiveLayer(); if(!L) return;
+  pushUndo();
   const rf=(lo,hi)=>lo+Math.random()*(hi-lo);
   const ri=(lo,hi)=>Math.floor(rf(lo,hi+1));
   const rb=(p=.5)=>Math.random()<p;
