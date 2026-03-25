@@ -154,7 +154,11 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
 /* LAYER IMAGE DROP TARGET */
 .layer-item.img-drop-over{border-color:var(--acid)!important;box-shadow:0 0 10px rgba(200,255,0,.3);background:rgba(200,255,0,.05)!important;}
 
-/* MOBILE LAYOUT */
+.mix-row{display:flex;align-items:center;gap:7px;flex:1;max-width:220px;}
+.mix-label{font-family:'Orbitron',sans-serif;font-size:7px;font-weight:700;letter-spacing:2px;color:var(--muted);flex-shrink:0;}
+.mix-val{font-size:8px;color:var(--cyan);min-width:28px;text-align:right;flex-shrink:0;font-family:'Share Tech Mono',monospace;}
+.mix-row input[type="range"]{flex:1;}
+#origCanvas{position:absolute;top:0;left:0;pointer-events:none;image-rendering:pixelated;display:none;}
 @media(max-width:768px){
   header{padding:0 8px;gap:5px;height:44px;overflow-x:auto;flex-wrap:nowrap;}
   header::-webkit-scrollbar{display:none;}
@@ -653,6 +657,7 @@ select:focus{border-color:var(--cyan);}
     <div class="canvas-wrapper" id="cWrap">
       <canvas id="dc"></canvas>
       <canvas id="maskCanvas"></canvas>
+      <canvas id="origCanvas"></canvas>
     </div>
   </div>
   <div class="canvas-toolbar">
@@ -663,6 +668,11 @@ select:focus{border-color:var(--cyan);}
     <button class="btn btn-sm" id="btnMaskPaint">✎ Paint Mask</button>
     <button class="btn btn-sm" id="btnMaskErase">◻ Erase Mask</button>
     <div class="vsep"></div>
+    <div class="mix-row">
+      <span class="mix-label">MIX</span>
+      <input type="range" id="mixSlider" min="0" max="100" value="0" title="Blend original over effects">
+      <span class="mix-val" id="mixVal">0%</span>
+    </div>
     <div class="status"><span id="stDims">NO IMAGE</span><span class="status-ms" id="stMs">—</span></div>
   </div>
 </div>
@@ -2226,8 +2236,78 @@ if (drawerBtn) {
 
 
 // ══════════════════════════════════════════════════════
-// LOGO GLITCH — JS random burst timing
+// WET/DRY MIX OVERLAY
 // ══════════════════════════════════════════════════════
+const origCanvas = document.getElementById('origCanvas');
+const origCtx = origCanvas.getContext('2d');
+let mixAmt = 0; // 0 = full effects, 1 = full original
+
+function buildOrigComposite() {
+  if (!imgW || !imgH) return null;
+  const result = new Uint8ClampedArray(imgW * imgH * 4);
+  for (let i = 0; i < layers.length; i++) {
+    const L = layers[i];
+    if (!L.visible || !L.origData) continue;
+    const opacity = L.opacity / 100;
+    for (let p = 0; p < imgW * imgH; p++) {
+      const pi = p * 4;
+      const sA = (L.origData.data[pi+3] / 255) * opacity;
+      if (sA <= 0) continue;
+      const dA = result[pi+3] / 255;
+      const outA = sA + dA * (1 - sA);
+      if (outA > 0) {
+        result[pi]   = Math.round((L.origData.data[pi]   * sA + result[pi]   * dA * (1-sA)) / outA);
+        result[pi+1] = Math.round((L.origData.data[pi+1] * sA + result[pi+1] * dA * (1-sA)) / outA);
+        result[pi+2] = Math.round((L.origData.data[pi+2] * sA + result[pi+2] * dA * (1-sA)) / outA);
+        result[pi+3] = Math.round(outA * 255);
+      }
+    }
+  }
+  return result;
+}
+
+function applyMixOverlay() {
+  if (!imgW || !imgH) return;
+  if (mixAmt <= 0) {
+    origCanvas.style.display = 'none';
+    return;
+  }
+  const orig = buildOrigComposite();
+  if (!orig) return;
+  origCanvas.width = imgW;
+  origCanvas.height = imgH;
+  origCanvas.style.width = dc.offsetWidth + 'px';
+  origCanvas.style.height = dc.offsetHeight + 'px';
+  origCanvas.style.display = 'block';
+  origCanvas.style.opacity = mixAmt;
+}
+
+// Mix slider in toolbar
+const mixSlider = document.getElementById('mixSlider');
+const mixVal = document.getElementById('mixVal');
+if (mixSlider) {
+  mixSlider.addEventListener('input', function() {
+    mixAmt = parseFloat(this.value) / 100;
+    const pct = Math.round(mixAmt * 100);
+    mixVal.textContent = pct + '%';
+    updateSliderFill(this);
+    applyMixOverlay();
+    if (mixAmt > 0) {
+      const orig = buildOrigComposite();
+      if (orig) {
+        origCanvas.width = imgW; origCanvas.height = imgH;
+        origCtx.putImageData(new ImageData(orig, imgW, imgH), 0, 0);
+        origCanvas.style.width = dc.offsetWidth + 'px';
+        origCanvas.style.height = dc.offsetHeight + 'px';
+        origCanvas.style.display = 'block';
+        origCanvas.style.opacity = mixAmt;
+      }
+    } else {
+      origCanvas.style.display = 'none';
+    }
+  });
+}
+
 (function(){
   const logo=document.querySelector('.logo');
   if(!logo)return;
