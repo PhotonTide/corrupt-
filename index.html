@@ -131,6 +131,57 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
 .btn-undo:hover{border-color:var(--chrome);color:var(--chrome3);background:rgba(255,255,255,.04);}
 .btn-undo:disabled{opacity:.25;cursor:default;pointer-events:none;}
 @keyframes undoFlash{0%{background:rgba(0,229,255,.15);box-shadow:0 0 12px rgba(0,229,255,.3);}100%{background:transparent;}}
+
+/* TAB ACTIVITY BADGE */
+.tab{position:relative;}
+.tab-badge{position:absolute;top:3px;right:2px;min-width:8px;height:8px;background:var(--cyan);border-radius:4px;font-size:5.5px;color:#000;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 2px;opacity:0;transition:opacity .2s;pointer-events:none;line-height:1;}
+.tab[data-tab="glitch"] .tab-badge{background:var(--mag);}
+.tab[data-tab="dither"] .tab-badge{background:var(--acid);}
+.tab[data-tab="liquify"] .tab-badge{background:var(--purp);}
+.tab[data-tab="fx"] .tab-badge{background:#4cc9f0;}
+.tab[data-tab="crt"] .tab-badge{background:var(--green);}
+.tab[data-tab="mosh"] .tab-badge{background:var(--orange);}
+.tab[data-tab="water"] .tab-badge{background:var(--teal);}
+.tab[data-tab="more"] .tab-badge{background:#ff6ef7;}
+.tab-badge.on{opacity:1;}
+
+/* LAYER DRAG REORDER */
+.layer-item.dragging{opacity:.35;border-style:dashed;}
+.layer-item.drag-over{border-color:var(--cyan);box-shadow:0 2px 0 var(--cyan);background:rgba(0,229,255,.08);}
+.layer-drag-handle{color:var(--muted);font-size:10px;cursor:grab;padding:0 2px;flex-shrink:0;opacity:.3;transition:opacity .1s;user-select:none;}
+.layer-item:hover .layer-drag-handle{opacity:.7;}
+
+/* LAYER IMAGE DROP TARGET */
+.layer-item.img-drop-over{border-color:var(--acid)!important;box-shadow:0 0 10px rgba(200,255,0,.3);background:rgba(200,255,0,.05)!important;}
+
+/* MOBILE LAYOUT */
+@media(max-width:768px){
+  header{padding:0 8px;gap:5px;height:44px;overflow-x:auto;flex-wrap:nowrap;}
+  header::-webkit-scrollbar{display:none;}
+  .logo{font-size:13px;letter-spacing:3px;}
+  .logo::before,.logo::after{font-size:13px;letter-spacing:3px;}
+  .vsep{display:none;}
+  .btn{padding:4px 7px;font-size:7px;letter-spacing:.8px;}
+  .btn-undo{padding:3px 6px;font-size:9px;}
+  main{flex-direction:column;overflow:hidden;}
+  .sidebar{width:100%;height:auto;flex-shrink:0;border-right:none;border-bottom:1px solid var(--b1);max-height:50vh;}
+  .tabs{flex-wrap:nowrap;overflow-x:auto;}
+  .tabs::-webkit-scrollbar{display:none;}
+  .tab{min-width:40px;padding:10px 3px;font-size:6.5px;}
+  .panels{flex:1;overflow-y:auto;}
+  .canvas-area{flex:1;min-height:0;}
+  .canvas-container{min-height:0;}
+  #dc{max-height:100%;max-width:100%;}
+  .canvas-toolbar{padding:5px 8px;gap:5px;flex-wrap:wrap;}
+  .status{gap:8px;font-size:7px;}
+  .layers-panel{display:none!important;}
+  .layers-drawer-btn{display:flex!important;}
+}
+@media(min-width:769px){
+  .layers-drawer-btn{display:none!important;}
+}
+.layers-drawer-btn{display:none;align-items:center;position:fixed;bottom:16px;right:16px;z-index:200;background:var(--surf2);border:1px solid rgba(162,89,255,.5);color:var(--purp);font-family:'Share Tech Mono',monospace;font-size:8px;padding:7px 12px;cursor:pointer;letter-spacing:1.5px;clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);box-shadow:0 0 16px rgba(162,89,255,.25);text-transform:uppercase;}
+.layers-panel.mobile-open{display:flex!important;position:fixed;bottom:0;left:0;right:0;width:100%;height:65vh;z-index:300;box-shadow:0 -4px 30px rgba(0,0,0,.9);border-top:1px solid rgba(162,89,255,.4);border-left:none;}
 .btn-sm{padding:3px 8px;font-size:7px;}
 .btn-icon{padding:4px 8px;font-size:11px;}
 .btn-full{width:100%;text-align:center;clip-path:none;padding:7px;}
@@ -359,15 +410,15 @@ select:focus{border-color:var(--cyan);}
 <!-- LEFT SIDEBAR -->
 <div class="sidebar">
   <div class="tabs">
-    <button class="tab active" data-tab="edit">Edit</button>
-    <button class="tab" data-tab="glitch">Glitch</button>
-    <button class="tab" data-tab="dither">Dither</button>
-    <button class="tab" data-tab="liquify">Warp</button>
-    <button class="tab" data-tab="fx">FX</button>
-    <button class="tab" data-tab="crt">CRT</button>
-    <button class="tab" data-tab="mosh">Mosh</button>
-    <button class="tab" data-tab="water">H₂O</button>
-    <button class="tab" data-tab="more">More</button>
+    <button class="tab active" data-tab="edit">Edit<span class="tab-badge" id="badge-edit"></span></button>
+    <button class="tab" data-tab="glitch">Glitch<span class="tab-badge" id="badge-glitch"></span></button>
+    <button class="tab" data-tab="dither">Dither<span class="tab-badge" id="badge-dither"></span></button>
+    <button class="tab" data-tab="liquify">Warp<span class="tab-badge" id="badge-liquify"></span></button>
+    <button class="tab" data-tab="fx">FX<span class="tab-badge" id="badge-fx"></span></button>
+    <button class="tab" data-tab="crt">CRT<span class="tab-badge" id="badge-crt"></span></button>
+    <button class="tab" data-tab="mosh">Mosh<span class="tab-badge" id="badge-mosh"></span></button>
+    <button class="tab" data-tab="water">H₂O<span class="tab-badge" id="badge-water"></span></button>
+    <button class="tab" data-tab="more">More<span class="tab-badge" id="badge-more"></span></button>
   </div>
   <div class="panels">
 
@@ -685,6 +736,9 @@ select:focus{border-color:var(--cyan);}
 <input type="file" id="fi2" accept="image/*" style="position:fixed;top:-9999px;left:-9999px">
 <input type="file" id="fiVid" accept="video/*" style="position:fixed;top:-9999px;left:-9999px">
 
+<!-- Mobile layers drawer button -->
+<button class="layers-drawer-btn" id="btnLayersDrawer">⧉ Layers</button>
+
 <script>
 // ══════════════════════════════════════════════════════
 // DEFAULT EFFECTS STATE
@@ -750,12 +804,12 @@ function getActiveLayer() { return layers[activeLayerIdx] || null; }
 
 function setActiveLayer(idx) {
   activeLayerIdx = Math.max(0, Math.min(layers.length-1, idx));
-  // Sync sidebar UI to active layer's S
   const L = getActiveLayer();
   if(L) syncSidebarFromS(L.S);
   renderLayersList();
   schedRender();
   updateLayerControls();
+  updateTabBadges();
 }
 
 // ══════════════════════════════════════════════════════
@@ -1072,7 +1126,16 @@ function renderLayersList() {
     div.append(vis, thumb, name, maskDot, del);
     div.addEventListener('click', () => setActiveLayer(i));
     el.appendChild(div);
+
+    // Drag to reorder + image drop onto layer
+    addLayerDragEvents(div, i);
+    div.addEventListener('dragover', e => {
+      if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); div.classList.add('img-drop-over'); }
+    });
+    div.addEventListener('dragleave', () => div.classList.remove('img-drop-over'));
+    div.addEventListener('drop', () => div.classList.remove('img-drop-over'));
   }
+  updateTabBadges();
 }
 
 // ══════════════════════════════════════════════════════
@@ -1409,6 +1472,7 @@ function doRender(){
   const comp=compositeAll(imgW,imgH);
   dctx.putImageData(new ImageData(comp,imgW,imgH),0,0);
   document.getElementById('stMs').textContent=Math.round(performance.now()-t0)+'ms';
+  updateTabBadges();
 }
 
 function applyEffectPipeline(origData, w, h, S, wX, wY, warpDirty) {
@@ -2028,6 +2092,138 @@ document.getElementById('btnRandomize').addEventListener('click', () => {
 renderLayersList();
 // Init all slider track fills
 document.querySelectorAll('input[type="range"]').forEach(updateSliderFill);
+
+// ══════════════════════════════════════════════════════
+// TAB ACTIVITY BADGES
+// ══════════════════════════════════════════════════════
+const TAB_EFFECTS = {
+  edit:    S => [S.br!==0,S.co!==0,S.sa!==0,S.hu!==0,S.ex!==100,S.cr!==0,S.cg!==0,S.cb!==0].filter(Boolean).length,
+  glitch:  S => [S.eRgb,S.eBlk,S.eScl,S.eSrt].filter(Boolean).length,
+  dither:  S => [S.eDth].filter(Boolean).length,
+  liquify: (S,L) => (L&&L.warpDirty) ? 1 : 0,
+  fx:      S => [S.eInv,S.ePos,S.eBlr,S.eShp,S.eNse,S.ePxl,S.eVig].filter(Boolean).length,
+  crt:     S => [S.eCrt].filter(Boolean).length,
+  mosh:    S => [S.eMosh,S.eMsmear,S.eMifl,S.eMqz].filter(Boolean).length,
+  water:   S => [S.eWater].filter(Boolean).length,
+  more:    S => [S.eHalf,S.eTherm,S.eOil,S.eFeed,S.eVor,S.eAscii].filter(Boolean).length,
+};
+
+function updateTabBadges() {
+  const L = getActiveLayer();
+  const S = L ? L.S : null;
+  if (!S) return;
+  Object.entries(TAB_EFFECTS).forEach(([tab, fn]) => {
+    const badge = document.getElementById('badge-'+tab);
+    if (!badge) return;
+    const count = fn(S, L);
+    badge.textContent = count > 1 ? count : '';
+    badge.classList.toggle('on', count > 0);
+  });
+}
+
+
+// ══════════════════════════════════════════════════════
+// LAYER DRAG TO REORDER
+// ══════════════════════════════════════════════════════
+let dragSrcIdx = null; // index in layers[] (not display order)
+
+function addLayerDragEvents(div, layerIdx) {
+  div.setAttribute('draggable', 'true');
+
+  div.addEventListener('dragstart', e => {
+    dragSrcIdx = layerIdx;
+    div.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', 'layer-reorder');
+  });
+
+  div.addEventListener('dragend', () => {
+    div.classList.remove('dragging');
+    document.querySelectorAll('.layer-item').forEach(d => d.classList.remove('drag-over'));
+  });
+
+  div.addEventListener('dragover', e => {
+    // Check if this is a layer reorder (not an image file drop)
+    if (e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.layer-item').forEach(d => d.classList.remove('drag-over'));
+    div.classList.add('drag-over');
+  });
+
+  div.addEventListener('dragleave', () => div.classList.remove('drag-over'));
+
+  div.addEventListener('drop', e => {
+    e.preventDefault();
+    div.classList.remove('drag-over');
+    // Image file drop on layer
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const f = e.dataTransfer.files[0];
+      if (f.type.startsWith('image/')) {
+        loadFileIntoLayer(f, layerIdx);
+        return;
+      }
+    }
+    // Layer reorder
+    if (dragSrcIdx === null || dragSrcIdx === layerIdx) return;
+    pushUndo();
+    const moved = layers.splice(dragSrcIdx, 1)[0];
+    const newIdx = dragSrcIdx < layerIdx ? layerIdx - 1 : layerIdx;
+    layers.splice(newIdx, 0, moved);
+    activeLayerIdx = newIdx;
+    dragSrcIdx = null;
+    renderLayersList();
+    schedRender();
+    updateTabBadges();
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// DRAG IMAGE ONTO SPECIFIC LAYER
+// ══════════════════════════════════════════════════════
+function loadFileIntoLayer(file, targetIdx) {
+  const L = layers[targetIdx];
+  if (!L) return;
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    const w = img.naturalWidth, h = img.naturalHeight;
+    const tmpC = document.createElement('canvas');
+    tmpC.width = w; tmpC.height = h;
+    tmpC.getContext('2d').drawImage(img, 0, 0);
+    const data = tmpC.getContext('2d').getImageData(0, 0, w, h);
+    URL.revokeObjectURL(url);
+    pushUndo();
+    L.origData = data; L.w = w; L.h = h;
+    L.wX = new Float32Array(w*h); L.wY = new Float32Array(w*h);
+    L.warpDirty = false; L.mask = null;
+    renderLayersList();
+    schedRender();
+  };
+  img.onerror = () => URL.revokeObjectURL(url);
+  img.src = url;
+}
+
+// ══════════════════════════════════════════════════════
+// MOBILE LAYERS DRAWER
+// ══════════════════════════════════════════════════════
+const drawerBtn = document.getElementById('btnLayersDrawer');
+const layersPanel = document.querySelector('.layers-panel');
+if (drawerBtn) {
+  drawerBtn.addEventListener('click', () => {
+    const isOpen = layersPanel.classList.toggle('mobile-open');
+    drawerBtn.textContent = isOpen ? '✕ Close' : '⧉ Layers';
+  });
+  // Close on outside tap
+  document.addEventListener('click', e => {
+    if (layersPanel.classList.contains('mobile-open') &&
+        !layersPanel.contains(e.target) && e.target !== drawerBtn) {
+      layersPanel.classList.remove('mobile-open');
+      drawerBtn.textContent = '⧉ Layers';
+    }
+  });
+}
+
 
 // ══════════════════════════════════════════════════════
 // LOGO GLITCH — JS random burst timing
