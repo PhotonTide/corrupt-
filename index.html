@@ -131,6 +131,12 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
 .btn-undo:hover{border-color:var(--chrome);color:var(--chrome3);background:rgba(255,255,255,.04);}
 .btn-undo:disabled{opacity:.25;cursor:default;pointer-events:none;}
 @keyframes undoFlash{0%{background:rgba(0,229,255,.15);box-shadow:0 0 12px rgba(0,229,255,.3);}100%{background:transparent;}}
+.master-row{display:flex;align-items:center;gap:6px;}
+.master-label{font-family:'Orbitron',sans-serif;font-size:7px;font-weight:700;letter-spacing:2px;color:var(--orange);flex-shrink:0;}
+.master-row input[type="range"]{width:80px;}
+.master-val{font-size:8px;color:var(--orange);min-width:30px;text-align:right;font-family:'Share Tech Mono',monospace;}
+.preset-group{display:flex;align-items:center;gap:4px;}
+.preset-group select{font-size:7.5px;padding:4px 6px;width:auto;max-width:110px;background:var(--surf3);border:1px solid var(--b2);color:var(--text);}
 
 /* TAB ACTIVITY BADGE */
 .tab{position:relative;}
@@ -300,7 +306,12 @@ select:focus{border-color:var(--cyan);}
 /* CANVAS */
 .canvas-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
 .canvas-container{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;background:#040408;background-image:linear-gradient(rgba(0,229,255,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.018) 1px,transparent 1px);background-size:40px 40px;transition:background .3s;}
-.canvas-wrapper{position:relative;display:none;line-height:0;}
+.canvas-container.zoom-mode{cursor:crosshair;}
+.canvas-container.zoom-mode.panning{cursor:grabbing;}
+.canvas-container.zoom-mode{overflow:visible;}
+.canvas-wrapper{position:relative;display:none;line-height:0;transform-origin:50% 50%;}
+.btn.zoom-active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.08);box-shadow:0 0 8px rgba(0,229,255,.2);}
+.zoom-readout{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--cyan);min-width:32px;}
 #dc{display:block;max-width:100%;max-height:calc(100vh - 128px);cursor:crosshair;image-rendering:pixelated;box-shadow:0 0 0 1px rgba(0,229,255,.15),0 0 60px rgba(0,0,0,.9),0 0 0 1px var(--b2);}
 .canvas-container.has-image #dc{box-shadow:0 0 0 1px rgba(0,229,255,.25),0 0 40px rgba(0,229,255,.04),0 0 80px rgba(0,0,0,.9);}
 #maskCanvas{position:absolute;top:0;left:0;pointer-events:none;opacity:.55;display:none;}
@@ -393,6 +404,18 @@ select:focus{border-color:var(--cyan);}
   <button class="btn" id="btnFlipV">⇅ V</button>
   <div class="vsep"></div>
   <button class="btn btn-acid" id="btnRandomize">⚄ Randomize</button>
+  <div class="vsep"></div>
+  <div class="master-row" title="Master effect intensity">
+    <span class="master-label">INT</span>
+    <input type="range" id="masterIntensity" min="0" max="200" value="100" title="Master intensity">
+    <span class="master-val" id="masterIntVal">100%</span>
+  </div>
+  <div class="vsep"></div>
+  <div class="preset-group">
+    <select id="presetSelect" title="Load preset"><option value="">— Presets —</option></select>
+    <button class="btn btn-sm" id="btnSavePreset" title="Save current as preset">💾</button>
+    <button class="btn btn-sm btn-mag" id="btnDelPreset" title="Delete preset">✕</button>
+  </div>
   <div class="header-right">
     <button class="btn btn-undo" id="btnUndo" disabled title="Undo (⌘Z)">⟲</button>
     <button class="btn btn-undo" id="btnRedo" disabled title="Redo (⌘⇧Z)">⟳</button>
@@ -640,10 +663,39 @@ select:focus{border-color:var(--cyan);}
       <div class="cg"><div class="cl">Char Size <span class="v pk" id="v-asciisz">8</span>px</div><input type="range" class="pk" id="s-asciisz" min="4" max="24" value="8"></div>
       <div class="cg"><div class="cl">Charset</div><select id="sel-asciich"><option value="block">█▓▒░ Block</option><option value="std">@#%+=-. Std</option><option value="dense">Dense</option><option value="minimal">Minimal</option></select></div>
       <div class="tr">Color <label class="toggle pk"><input type="checkbox" id="e-asciicol"><span class="ts"></span></label></div>
-    </div>
+      <div class="ch-div"></div>
+      <div class="sec">Chromatic Aberration</div>
+      <div class="tr">Enable <label class="toggle pk"><input type="checkbox" id="e-chrab"><span class="ts"></span></label></div>
+      <div class="cg"><div class="cl">Radius <span class="v pk" id="v-chrabr">20</span>%</div><input type="range" class="pk" id="s-chrabr" min="0" max="100" value="20"></div>
+      <div class="cg"><div class="cl">Strength <span class="v pk" id="v-chrabd">80</span></div><input type="range" class="pk" id="s-chrabd" min="0" max="200" value="80"></div>
+      <div class="ch-div"></div>
+      <div class="sec">Pixel Drift</div>
+      <div class="tr">Enable <label class="toggle pk"><input type="checkbox" id="e-drift"><span class="ts"></span></label></div>
+      <div class="cg"><div class="cl">Amount <span class="v pk" id="v-driftamt">8</span>px</div><input type="range" class="pk" id="s-driftamt" min="1" max="80" value="8"></div>
+      <div class="cg"><div class="cl">Speed <span class="v pk" id="v-driftspd">3</span></div><input type="range" class="pk" id="s-driftspd" min="1" max="20" value="3"></div>
+      <div class="cg"><div class="cl">Seed <span class="v pk" id="v-driftseed">1</span></div><input type="range" class="pk" id="s-driftseed" min="1" max="999" value="1"></div>
+      <div class="ch-div"></div>
+      <div class="sec">Film Grain</div>
+      <div class="tr">Enable <label class="toggle pk"><input type="checkbox" id="e-grain"><span class="ts"></span></label></div>
+      <div class="cg"><div class="cl">Amount <span class="v pk" id="v-grainamt">30</span></div><input type="range" class="pk" id="s-grainamt" min="1" max="100" value="30"></div>
+      <div class="cg"><div class="cl">Size <span class="v pk" id="v-grainsize">1</span></div><input type="range" class="pk" id="s-grainsize" min="1" max="4" value="1"></div>
+      <div class="tr">Mono <label class="toggle pk"><input type="checkbox" id="e-grainmono"><span class="ts"></span></label></div>
+      <div class="ch-div"></div>
+      <div class="sec">LUT Color Grade</div>
+      <div class="tr">Enable <label class="toggle pk"><input type="checkbox" id="e-lut"><span class="ts"></span></label></div>
+      <div class="cg"><div class="cl">Preset</div><select id="sel-lutpreset"><option value="kodak">Kodak Gold</option><option value="fuji">Fuji Velvia</option><option value="faded">Faded Print</option><option value="tealorg">Teal & Orange</option><option value="bwfilm">B&W Film</option><option value="crossproc">Cross Process</option><option value="cyanotype">Cyanotype</option><option value="sepia">Sepia</option></select></div>
+      <div class="cg"><div class="cl">Strength <span class="v pk" id="v-lutstr">100</span>%</div><input type="range" class="pk" id="s-lutstr" min="0" max="100" value="100"></div>
+      <div class="ch-div"></div>
+      <div class="sec">Edge Glow</div>
+      <div class="tr">Enable <label class="toggle pk"><input type="checkbox" id="e-edge"><span class="ts"></span></label></div>
+      <div class="cg"><div class="cl">Strength <span class="v pk" id="v-edgestr">80</span></div><input type="range" class="pk" id="s-edgestr" min="1" max="255" value="80"></div>
+      <div class="cg"><div class="cl">Color</div><select id="sel-edgecol"><option value="cyan">Cyan</option><option value="mag">Magenta</option><option value="acid">Acid</option><option value="white">White</option><option value="red">Red</option><option value="src">Source Color</option></select></div>
+      <div class="cg"><div class="cl">Thickness <span class="v pk" id="v-edgethick">1</span></div><input type="range" class="pk" id="s-edgethick" min="1" max="4" value="1"></div>
 
-  </div>
-</div>
+    </div><!-- end p-more -->
+
+  </div><!-- end panels -->
+</div><!-- end sidebar -->
 
 <!-- CANVAS AREA -->
 <div class="canvas-area">
@@ -668,11 +720,15 @@ select:focus{border-color:var(--cyan);}
     <button class="btn btn-sm" id="btnMaskPaint">✎ Paint Mask</button>
     <button class="btn btn-sm" id="btnMaskErase">◻ Erase Mask</button>
     <div class="vsep"></div>
+    <button class="btn btn-sm" id="btnZoomMode" title="Zoom mode — scroll to zoom, drag to pan">⌖ Zoom</button>
+    <span class="zoom-readout" id="zoomReadout" style="display:none">100%</span>
+    <div class="vsep"></div>
     <div class="mix-row">
       <span class="mix-label">MIX</span>
       <input type="range" id="mixSlider" min="0" max="100" value="0" title="Blend original over effects">
       <span class="mix-val" id="mixVal">0%</span>
     </div>
+    <div class="vsep"></div>
     <div class="status"><span id="stDims">NO IMAGE</span><span class="status-ms" id="stMs">—</span></div>
   </div>
 </div>
@@ -784,6 +840,12 @@ function defaultS(){return{
   eFeed:false,feedn:3,feedz:102,feedd:80,
   eVor:false,vorc:80,vors:1,vord:15,vorst:'displace',
   eAscii:false,asciisz:8,asciich:'block',eAsciicol:false,
+  // New effects
+  eChrAb:false,chrabr:20,chrabd:80,
+  eDrift:false,driftamt:8,driftspd:3,driftseed:1,
+  eGrain:false,grainamt:30,grainsize:1,grainmono:false,
+  eLut:false,lutpreset:'kodak',lutstr:100,
+  eEdge:false,edgestr:80,edgecol:'cyan',edgethick:1,
 };}
 
 // ══════════════════════════════════════════════════════
@@ -942,6 +1004,12 @@ bindCB('e-half','eHalf'); bindCB('e-halfcol','eHalfcol');
 bindCB('e-therm','eTherm'); bindCB('e-oil','eOil'); bindCB('e-feed','eFeed');
 bindCB('e-vor','eVor'); bindCB('e-ascii','eAscii'); bindCB('e-asciicol','eAsciicol');
 bindSel('sel-halft','halft'); bindSel('sel-thermp','thermp'); bindSel('sel-vorst','vorst'); bindSel('sel-asciich','asciich');
+// New effects
+bindCB('e-chrab','eChrAb'); bindSlider('chrabr','chrabr',v=>Math.round(v)+'%'); bindSlider('chrabd','chrabd');
+bindCB('e-drift','eDrift'); bindSlider('driftamt','driftamt',v=>v+'px'); bindSlider('driftspd','driftspd'); bindSlider('driftseed','driftseed');
+bindCB('e-grain','eGrain'); bindSlider('grainamt','grainamt'); bindSlider('grainsize','grainsize'); bindCB('e-grainmono','grainmono');
+bindCB('e-lut','eLut'); bindSel('sel-lutpreset','lutpreset'); bindSlider('lutstr','lutstr',v=>Math.round(v)+'%');
+bindCB('e-edge','eEdge'); bindSlider('edgestr','edgestr'); bindSlider('edgethick','edgethick'); bindSel('sel-edgecol','edgecol');
 
 // Tabs
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
@@ -1169,6 +1237,10 @@ function syncSidebarFromS(S) {
     ['halfs',S.halfs],['halfa',S.halfa],['thermi',S.thermi],['oilr',S.oilr],['oill',S.oill],
     ['feedn',S.feedn],['feedz',S.feedz],['feedd',S.feedd],
     ['vorc',S.vorc],['vors',S.vors],['vord',S.vord],['asciisz',S.asciisz],
+    ['chrabr',S.chrabr],['chrabd',S.chrabd],
+    ['driftamt',S.driftamt],['driftspd',S.driftspd],['driftseed',S.driftseed],
+    ['grainamt',S.grainamt],['grainsize',S.grainsize],
+    ['lutstr',S.lutstr],['edgestr',S.edgestr],['edgethick',S.edgethick],
   ];
   sliders.forEach(([id,val])=>{
     const el=document.getElementById('s-'+id);
@@ -1186,6 +1258,8 @@ function syncSidebarFromS(S) {
     ['e-water',S.eWater],['e-wchr',S.eWchr],['e-wcaust',S.eWcaust],['e-wtint',S.eWtint],
     ['e-half',S.eHalf],['e-halfcol',S.eHalfcol],['e-therm',S.eTherm],['e-oil',S.eOil],
     ['e-feed',S.eFeed],['e-vor',S.eVor],['e-ascii',S.eAscii],['e-asciicol',S.eAsciicol],
+    ['e-chrab',S.eChrAb],['e-drift',S.eDrift],['e-grain',S.eGrain],['e-grainmono',S.grainmono],
+    ['e-lut',S.eLut],['e-edge',S.eEdge],
   ];
   checks.forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.checked=val; });
   const sels = [
@@ -1231,8 +1305,10 @@ function loadFile(file) {
     maskCanvas.width=w; maskCanvas.height=h;
     document.getElementById('upZone').style.display='none';
     document.getElementById('cWrap').style.display='inline-block';
+    document.getElementById('cWrap').style.transform='';
     document.querySelector('.canvas-container').classList.add('has-image');
     document.getElementById('stDims').textContent=w+'×'+h;
+    if(window._zoomReset) window._zoomReset();
     renderLayersList();
     schedRender();
   };
@@ -1495,9 +1571,12 @@ function applyEffectPipeline(origData, w, h, S, wX, wY, warpDirty) {
   if(S.eInv) d=fxInvert(d);
   if(S.ePos) d=fxPosterize(d,S.plv);
   if(S.eRgb&&(S.rx>0||S.ry>0)) d=fxRgbShift(d,w,h,S.rx,S.ry);
+  if(S.eChrAb) d=fxChromaticAb(d,w,h,S);
   if(S.eBlk&&S.bi>0) d=fxBlockGlitch(d,w,h,S.bi,S.bs,S.bsd);
   if(S.eSrt) d=fxPixelSort(d,w,h,S.st,S.sd);
+  if(S.eDrift) d=fxPixelDrift(d,w,h,S);
   if(S.eDth) d=fxDither(d,w,h,S);
+  if(S.eGrain) d=fxFilmGrain(d,w,h,S);
   if(S.eNse) d=fxNoise(d,S.nse,S.eCnse);
   if(S.eScl) d=fxScanlines(d,w,h,S.ssp,S.sop);
   if(S.eVig) d=fxVignette(d,w,h,S.vig);
@@ -1505,13 +1584,17 @@ function applyEffectPipeline(origData, w, h, S, wX, wY, warpDirty) {
   if(S.eCrt) d=fxCRT(d,w,h,S);
   if(S.eMosh||S.eMsmear||S.eMifl||S.eMqz) d=fxDatamosh(d,w,h,S);
   if(S.eWater) d=fxWater(d,w,h,S);
-  // More effects
   if(S.eOil) d=fxOilPaint(d,w,h,S.oilr,S.oill);
   if(S.eHalf) d=fxHalftone(d,w,h,S);
   if(S.eTherm) d=fxThermal(d,w,h,S);
   if(S.eFeed) d=fxFeedback(d,w,h,S);
   if(S.eVor) d=fxVoronoi(d,w,h,S);
   if(S.eAscii) d=fxAscii(d,w,h,S);
+  if(S.eLut) d=fxLUT(d,w,h,S);
+  if(S.eEdge) d=fxEdgeGlow(d,w,h,S);
+  // Master intensity blend
+  const mi=typeof masterIntensity!=='undefined'?masterIntensity:1;
+  if(mi!==1){const orig=new Uint8ClampedArray(origData.data);for(let i=0;i<d.length;i+=4){d[i]=Math.round(orig[i]+(d[i]-orig[i])*mi);d[i+1]=Math.round(orig[i+1]+(d[i+1]-orig[i+1])*mi);d[i+2]=Math.round(orig[i+2]+(d[i+2]-orig[i+2])*mi);d[i+3]=d[i+3];}}
   return d;
 }
 
@@ -2062,8 +2145,138 @@ function fxAscii(d, w, h, S) {
 }
 
 // ══════════════════════════════════════════════════════
-// RANDOMIZER
+// NEW EFFECTS
 // ══════════════════════════════════════════════════════
+
+function fxChromaticAb(d, w, h, S) {
+  const r = new Uint8ClampedArray(d);
+  const cx=w/2, cy=h/2;
+  const maxR=Math.sqrt(cx*cx+cy*cy);
+  const threshold=S.chrabr/100; // inner radius where effect starts
+  const strength=S.chrabd/10;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const dx=(x-cx)/cx, dy=(y-cy)/cy;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<threshold) continue;
+    const falloff=(dist-threshold)/(1-threshold+0.001);
+    const shift=Math.round(falloff*falloff*strength);
+    if(shift===0) continue;
+    const pi=(y*w+x)*4;
+    const rxp=cl(x+shift,0,w-1), rxm=cl(x-shift,0,w-1);
+    const rip=(y*w+rxp)*4, rim=(y*w+rxm)*4;
+    r[pi]  =d[rip];
+    r[pi+2]=d[rim+2];
+  }
+  return r;
+}
+
+function fxPixelDrift(d, w, h, S) {
+  const r = new Uint8ClampedArray(d);
+  const amt=Math.round(S.driftamt);
+  const spd=S.driftspd;
+  const seed=S.driftseed;
+  // Each row gets an independent random offset based on seed+row
+  function rowRand(row){let x=Math.sin(row*127.1+seed*311.7)*43758.5;return x-(x|0);}
+  for(let y=0;y<h;y++){
+    const noise=rowRand(Math.floor(y/spd));
+    const offset=Math.round((noise-.5)*2*amt);
+    for(let x=0;x<w;x++){
+      const sx=cl(x-offset,0,w-1);
+      const di=(y*w+x)*4, si=(y*w+sx)*4;
+      r[di]=d[si]; r[di+1]=d[si+1]; r[di+2]=d[si+2]; r[di+3]=d[si+3];
+    }
+  }
+  return r;
+}
+
+function fxFilmGrain(d, w, h, S) {
+  const r = new Uint8ClampedArray(d);
+  const amt=S.grainamt;
+  const sz=Math.max(1,Math.round(S.grainsize));
+  const mono=S.grainmono;
+  // Use a seeded noise pattern for organic grain
+  for(let y=0;y<h;y+=sz) for(let x=0;x<w;x+=sz){
+    const grR=(Math.random()-.5)*amt*2;
+    const grG=mono?grR:(Math.random()-.5)*amt*2;
+    const grB=mono?grR:(Math.random()-.5)*amt*2;
+    for(let dy=0;dy<sz&&y+dy<h;dy++) for(let dx=0;dx<sz&&x+dx<w;dx++){
+      const i=((y+dy)*w+(x+dx))*4;
+      r[i]  =cl(d[i]  +grR,0,255);
+      r[i+1]=cl(d[i+1]+grG,0,255);
+      r[i+2]=cl(d[i+2]+grB,0,255);
+      r[i+3]=d[i+3];
+    }
+  }
+  return r;
+}
+
+const LUT_PRESETS={
+  kodak:(r,g,b)=>{// warm, slightly lifted shadows, muted greens
+    return[cl(r*1.05+8,0,255),cl(g*.95+4,0,255),cl(b*.88+6,0,255)];},
+  fuji:(r,g,b)=>{// vivid, greens boosted, blues cooler
+    return[cl(r*.97,0,255),cl(g*1.08,0,255),cl(b*1.06,0,255)];},
+  faded:(r,g,b)=>{// lifted blacks, desaturated, slightly blue
+    const f=0.85;return[cl(r*f+25,0,255),cl(g*f+22,0,255),cl(b*f+35,0,255)];},
+  tealorg:(r,g,b)=>{// push reds/yellows warm, shadows teal
+    const lum=(r+g+b)/3;
+    const nr=cl(r*1.15-(lum<100?10:0),0,255);
+    const ng=cl(g*.93+(lum<100?5:0),0,255);
+    const nb=cl(b*.80+(lum<100?18:0),0,255);
+    return[nr,ng,nb];},
+  bwfilm:(r,g,b)=>{// orthochromatic B&W - reds bright, blues dark
+    const l=cl(r*.5+g*.4+b*.1,0,255); return[l,l,l];},
+  crossproc:(r,g,b)=>{// cross processed - high contrast, color shift
+    return[cl(r*1.3-20,0,255),cl(g*.7+30,0,255),cl(b*1.4-15,0,255)];},
+  cyanotype:(r,g,b)=>{// blue print look
+    const l=(r*.299+g*.587+b*.114);
+    return[cl(l*.2,0,255),cl(l*.5,0,255),cl(l*.9+40,0,255)];},
+  sepia:(r,g,b)=>{
+    const l=r*.299+g*.587+b*.114;
+    return[cl(l*.95+20,0,255),cl(l*.8+10,0,255),cl(l*.6,0,255)];}
+};
+function fxLUT(d,w,h,S){
+  const r=new Uint8ClampedArray(d);
+  const fn=LUT_PRESETS[S.lutpreset]||LUT_PRESETS.kodak;
+  const str=S.lutstr/100;
+  for(let i=0;i<d.length;i+=4){
+    const [nr,ng,nb]=fn(d[i],d[i+1],d[i+2]);
+    r[i]  =Math.round(d[i]  +(nr-d[i]  )*str);
+    r[i+1]=Math.round(d[i+1]+(ng-d[i+1])*str);
+    r[i+2]=Math.round(d[i+2]+(nb-d[i+2])*str);
+  }
+  return r;
+}
+
+const EDGE_COLORS={cyan:[0,229,255],mag:[255,45,120],acid:[200,255,0],white:[255,255,255],red:[255,40,40]};
+function fxEdgeGlow(d,w,h,S){
+  const r=new Uint8ClampedArray(d);
+  const thresh=S.edgestr;
+  const col=S.edgecol;
+  const thick=Math.round(S.edgethick);
+  // Sobel edge detection
+  const edges=new Float32Array(w*h);
+  for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){
+    const lum=i=>(d[i]+d[i+1]+d[i+2])/3;
+    const tl=lum(((y-1)*w+(x-1))*4),tc=lum(((y-1)*w+x)*4),tr=lum(((y-1)*w+(x+1))*4);
+    const ml=lum((y*w+(x-1))*4),             mr=lum((y*w+(x+1))*4);
+    const bl=lum(((y+1)*w+(x-1))*4),bc=lum(((y+1)*w+x)*4),br2=lum(((y+1)*w+(x+1))*4);
+    const gx=-tl-2*ml-bl+tr+2*mr+br2;
+    const gy=-tl-2*tc-tr+bl+2*bc+br2;
+    edges[y*w+x]=Math.sqrt(gx*gx+gy*gy);
+  }
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    if(edges[y*w+x]<thresh) continue;
+    const pi=(y*w+x)*4;
+    const str2=Math.min(1,(edges[y*w+x]-thresh)/128);
+    let ec=col==='src'?[d[pi],d[pi+1],d[pi+2]]:(EDGE_COLORS[col]||EDGE_COLORS.cyan);
+    r[pi]  =Math.round(r[pi]  +(ec[0]-r[pi]  )*str2);
+    r[pi+1]=Math.round(r[pi+1]+(ec[1]-r[pi+1])*str2);
+    r[pi+2]=Math.round(r[pi+2]+(ec[2]-r[pi+2])*str2);
+  }
+  // Optional thickness blur
+  if(thick>1){r.set(fxBoxBlur(r,w,h,thick-1));}
+  return r;
+}
 document.getElementById('btnRandomize').addEventListener('click', () => {
   const L = getActiveLayer(); if(!L) return;
   pushUndo();
@@ -2115,7 +2328,7 @@ const TAB_EFFECTS = {
   crt:     S => [S.eCrt].filter(Boolean).length,
   mosh:    S => [S.eMosh,S.eMsmear,S.eMifl,S.eMqz].filter(Boolean).length,
   water:   S => [S.eWater].filter(Boolean).length,
-  more:    S => [S.eHalf,S.eTherm,S.eOil,S.eFeed,S.eVor,S.eAscii].filter(Boolean).length,
+  more:    S => [S.eHalf,S.eTherm,S.eOil,S.eFeed,S.eVor,S.eAscii,S.eChrAb,S.eDrift,S.eGrain,S.eLut,S.eEdge].filter(Boolean).length,
 };
 
 function updateTabBadges() {
@@ -2307,6 +2520,269 @@ if (mixSlider) {
     }
   });
 }
+
+// ══════════════════════════════════════════════════════
+// DOUBLE-CLICK SLIDER TO RESET
+// ══════════════════════════════════════════════════════
+(function(){
+  // Map slider id suffix → default value from defaultS
+  const D = defaultS();
+  const sliderDefaults = {
+    br:D.br,co:D.co,sa:D.sa,hu:D.hu,ex:D.ex,cr:D.cr,cg:D.cg,cb:D.cb,
+    rx:D.rx,ry:D.ry,bi:D.bi,bs:D.bs,bsd:D.bsd,ssp:D.ssp,sop:D.sop,
+    st:D.st,dth:D.dth,dsc:D.dsc,lbs:D.lbs,lstr:D.lstr,plv:D.plv,
+    blr:D.blr,shp:D.shp,nse:D.nse,pxl:D.pxl,vig:D.vig,
+    crtms:D.crtms,crtmst:D.crtmst,crtscn:D.crtscn,crtsp:D.crtsp,
+    crtba:D.crtba,crtbr:D.crtbr,crtrpa:D.crtrpa,crtrpf:D.crtrpf,
+    crtrpp:D.crtrpp,crtrpco:D.crtrpco,crthsj:D.crthsj,crthsb:D.crthsb,
+    crthsd:D.crthsd,crthss:D.crthss,crtbrlc:D.crtbrlc,crtvig:D.crtvig,
+    mbsz:D.mbsz,mint:D.mint,mseed:D.mseed,mslen:D.mslen,msden:D.msden,
+    mifr:D.mifr,mifc:D.mifc,mqzl:D.mqzl,mqzc:D.mqzc,
+    wfreq:D.wfreq,wamp:D.wamp,wphase:D.wphase,wscale:D.wscale,
+    wref:D.wref,wchrs:D.wchrs,wcauss:D.wcauss,wcaussh:D.wcaussh,wtints:D.wtints,
+    halfs:D.halfs,halfa:D.halfa,thermi:D.thermi,oilr:D.oilr,oill:D.oill,
+    feedn:D.feedn,feedz:D.feedz,feedd:D.feedd,
+    vorc:D.vorc,vors:D.vors,vord:D.vord,asciisz:D.asciisz,
+    chrabr:D.chrabr,chrabd:D.chrabd,
+    driftamt:D.driftamt,driftspd:D.driftspd,driftseed:D.driftseed,
+    grainamt:D.grainamt,grainsize:D.grainsize,
+    lutstr:D.lutstr,edgestr:D.edgestr,edgethick:D.edgethick,
+  };
+  document.querySelectorAll('input[type="range"][id^="s-"]').forEach(el => {
+    const key = el.id.slice(2);
+    if(!(key in sliderDefaults)) return;
+    el.addEventListener('dblclick', () => {
+      const defVal = sliderDefaults[key];
+      el.value = defVal;
+      updateSliderFill(el);
+      const L = getActiveLayer(); if(L) L.S[key] = defVal;
+      const vEl = document.getElementById('v-'+key);
+      if(vEl) vEl.textContent = Math.round(defVal*10)/10;
+      pushUndo(); schedRender();
+      // Flash the thumb
+      el.style.transition='transform .1s';
+      el.style.setProperty('--flash','1');
+      setTimeout(()=>el.style.setProperty('--flash',''),200);
+    });
+  });
+})();
+
+// ══════════════════════════════════════════════════════
+// MASTER INTENSITY
+// ══════════════════════════════════════════════════════
+let masterIntensity = 1.0;
+const miSlider = document.getElementById('masterIntensity');
+const miVal = document.getElementById('masterIntVal');
+if(miSlider){
+  updateSliderFill(miSlider);
+  miSlider.addEventListener('input', function(){
+    masterIntensity = parseFloat(this.value)/100;
+    miVal.textContent = Math.round(masterIntensity*100)+'%';
+    miVal.style.color = masterIntensity > 1 ? 'var(--mag)' : masterIntensity < 1 ? 'var(--cyan)' : 'var(--orange)';
+    updateSliderFill(this);
+    schedRender();
+  });
+  miSlider.addEventListener('dblclick', ()=>{
+    miSlider.value=100; masterIntensity=1.0;
+    miVal.textContent='100%'; miVal.style.color='var(--orange)';
+    updateSliderFill(miSlider); schedRender();
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ══════════════════════════════════════════════════════
+const TAB_KEYS = ['edit','glitch','dither','liquify','fx','crt','mosh','water','more'];
+document.addEventListener('keydown', e=>{
+  // Skip if typing in an input
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA') return;
+  const meta = e.metaKey||e.ctrlKey;
+  // Number keys 1-9 → switch tabs
+  if(!meta && e.key>='1' && e.key<='9'){
+    const idx=parseInt(e.key)-1;
+    if(idx<TAB_KEYS.length){
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      const tab=document.querySelector(`.tab[data-tab="${TAB_KEYS[idx]}"]`);
+      const panel=document.getElementById('p-'+TAB_KEYS[idx]);
+      if(tab) tab.classList.add('active');
+      if(panel) panel.classList.add('active');
+    }
+    return;
+  }
+  if(meta) return; // let undo/redo handle meta combos
+  switch(e.key.toLowerCase()){
+    case 'r': document.getElementById('btnRandomize').click(); break;
+    case 'e': if(!e.shiftKey) document.getElementById('btnDownload').click(); break;
+  }
+});
+
+// ══════════════════════════════════════════════════════
+// SAVE / LOAD PRESETS
+// ══════════════════════════════════════════════════════
+const PRESETS_KEY = 'corrupt_presets_v1';
+
+function loadPresetsFromStorage(){
+  try{ return JSON.parse(localStorage.getItem(PRESETS_KEY)||'{}'); }
+  catch(e){ return {}; }
+}
+function savePresetsToStorage(p){
+  try{ localStorage.setItem(PRESETS_KEY, JSON.stringify(p)); } catch(e){}
+}
+function refreshPresetSelect(){
+  const sel=document.getElementById('presetSelect');
+  const presets=loadPresetsFromStorage();
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Presets —</option>';
+  Object.keys(presets).sort().forEach(name=>{
+    const o=document.createElement('option');
+    o.value=name; o.textContent=name;
+    sel.appendChild(o);
+  });
+  if(cur) sel.value=cur;
+}
+
+document.getElementById('btnSavePreset').addEventListener('click',()=>{
+  const name=prompt('Preset name:','My Preset');
+  if(!name||!name.trim()) return;
+  const L=getActiveLayer(); if(!L) return;
+  const presets=loadPresetsFromStorage();
+  presets[name.trim()]=JSON.parse(JSON.stringify(L.S));
+  savePresetsToStorage(presets);
+  refreshPresetSelect();
+  document.getElementById('presetSelect').value=name.trim();
+});
+
+document.getElementById('btnDelPreset').addEventListener('click',()=>{
+  const sel=document.getElementById('presetSelect');
+  const name=sel.value; if(!name) return;
+  if(!confirm(`Delete preset "${name}"?`)) return;
+  const presets=loadPresetsFromStorage();
+  delete presets[name];
+  savePresetsToStorage(presets);
+  refreshPresetSelect();
+});
+
+document.getElementById('presetSelect').addEventListener('change',function(){
+  if(!this.value) return;
+  const presets=loadPresetsFromStorage();
+  const S=presets[this.value]; if(!S) return;
+  const L=getActiveLayer(); if(!L) return;
+  pushUndo();
+  L.S=Object.assign(defaultS(),S);
+  syncSidebarFromS(L.S);
+  schedRender();
+});
+
+refreshPresetSelect();
+
+// ══════════════════════════════════════════════════════
+// ZOOM & PAN (toggle mode)
+// ══════════════════════════════════════════════════════
+(function(){
+  const canvasCont = document.getElementById('canvasCont');
+  const wrap = document.getElementById('cWrap');
+  const btn = document.getElementById('btnZoomMode');
+  const readout = document.getElementById('zoomReadout');
+
+  let zoomOn = false;
+  let scale = 1, tx = 0, ty = 0;
+  let dragging = false, dragStart = {x:0, y:0};
+
+  function applyTransform(){
+    wrap.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+    readout.textContent = Math.round(scale*100)+'%';
+  }
+
+  function resetTransform(){
+    scale=1; tx=0; ty=0;
+    wrap.style.transform='';
+    readout.textContent='100%';
+  }
+
+  btn.addEventListener('click', ()=>{
+    zoomOn = !zoomOn;
+    btn.classList.toggle('zoom-active', zoomOn);
+    canvasCont.classList.toggle('zoom-mode', zoomOn);
+    readout.style.display = zoomOn ? '' : 'none';
+    if(!zoomOn) resetTransform();
+  });
+
+  // Scroll to zoom — only in zoom mode
+  canvasCont.addEventListener('wheel', e=>{
+    if(!zoomOn || !imgW) return;
+    e.preventDefault();
+    const rect = canvasCont.getBoundingClientRect();
+    // Point under cursor in container space
+    const mx = e.clientX - rect.left - rect.width/2;
+    const my = e.clientY - rect.top - rect.height/2;
+    const factor = e.deltaY < 0 ? 1.12 : 0.9;
+    const newScale = Math.max(0.1, Math.min(12, scale * factor));
+    // Adjust translate so the point under cursor stays fixed
+    tx = mx - (mx - tx) * (newScale/scale);
+    ty = my - (my - ty) * (newScale/scale);
+    scale = newScale;
+    applyTransform();
+  }, {passive:false});
+
+  // Drag to pan — only in zoom mode
+  canvasCont.addEventListener('mousedown', e=>{
+    if(!zoomOn || !imgW) return;
+    if(e.button !== 0) return;
+    dragging = true;
+    dragStart = {x: e.clientX - tx, y: e.clientY - ty};
+    canvasCont.classList.add('panning');
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    tx = e.clientX - dragStart.x;
+    ty = e.clientY - dragStart.y;
+    applyTransform();
+  });
+  document.addEventListener('mouseup', ()=>{
+    if(!dragging) return;
+    dragging = false;
+    canvasCont.classList.remove('panning');
+  });
+
+  // Touch pinch-to-zoom + drag
+  let lastTouchDist = null;
+  canvasCont.addEventListener('touchstart', e=>{
+    if(!zoomOn || !imgW) return;
+    if(e.touches.length===2){
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      lastTouchDist = Math.sqrt(dx*dx+dy*dy);
+    } else if(e.touches.length===1){
+      dragging=true;
+      dragStart={x:e.touches[0].clientX-tx, y:e.touches[0].clientY-ty};
+    }
+  },{passive:true});
+  canvasCont.addEventListener('touchmove', e=>{
+    if(!zoomOn || !imgW) return;
+    if(e.touches.length===2 && lastTouchDist){
+      const dx=e.touches[0].clientX-e.touches[1].clientX;
+      const dy=e.touches[0].clientY-e.touches[1].clientY;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      const factor=dist/lastTouchDist;
+      scale=Math.max(0.1,Math.min(12,scale*factor));
+      lastTouchDist=dist;
+      applyTransform();
+    } else if(e.touches.length===1 && dragging){
+      tx=e.touches[0].clientX-dragStart.x;
+      ty=e.touches[0].clientY-dragStart.y;
+      applyTransform();
+    }
+  },{passive:true});
+  canvasCont.addEventListener('touchend', ()=>{
+    lastTouchDist=null; dragging=false;
+  },{passive:true});
+
+  // Reset on new image load
+  const origLoadFile = loadFile;
+  window._zoomReset = resetTransform;
+})();
 
 (function(){
   const logo=document.querySelector('.logo');
