@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CORRUPT — Image Distortion Lab</title>
+<title>BASEDIMAGE — Image Distortion Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -21,13 +21,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
 /* HEADER */
 header{display:flex;align-items:center;padding:0 16px;height:50px;background:linear-gradient(180deg,#0f0f1c,#080810);border-bottom:1px solid var(--b2);box-shadow:0 4px 20px rgba(0,0,0,.6);flex-shrink:0;gap:12px;position:relative;z-index:10;}
 header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),var(--mag),var(--purp),transparent);opacity:.7;}
-.logo{font-family:'Orbitron',sans-serif;font-weight:900;font-size:20px;letter-spacing:8px;color:#fff;text-shadow:0 0 6px rgba(255,255,255,.9),0 0 18px rgba(200,255,0,.4);position:relative;flex-shrink:0;animation:logoBase 11s infinite;}
+.logo-wrap{display:flex;flex-direction:column;flex-shrink:0;gap:1px;}
+.logo{font-family:'Orbitron',sans-serif;font-weight:900;font-size:20px;letter-spacing:8px;color:#fff;text-shadow:0 0 6px rgba(255,255,255,.9),0 0 18px rgba(200,255,0,.4);position:relative;animation:logoBase 11s infinite;}
 .logo::before,.logo::after{content:attr(data-text);position:absolute;top:0;left:0;font-family:'Orbitron',sans-serif;font-weight:900;font-size:20px;letter-spacing:8px;pointer-events:none;}
 .logo::before{color:#c8ff00;animation:glt1 11s infinite;mix-blend-mode:screen;}
 .logo::after{color:#c8ff00;animation:glt2 11s infinite;mix-blend-mode:screen;filter:blur(0.5px);}
 @keyframes logoBase{
   0%,55%{color:#fff;text-shadow:0 0 6px rgba(255,255,255,.9),0 0 18px rgba(200,255,0,.4);}
-  /* burst 1: flicker in */
   55.5%{color:#e0ffe0;text-shadow:0 0 2px #fff;}
   56%{color:#fff;text-shadow:0 0 12px rgba(255,255,255,1),0 0 30px rgba(200,255,0,.7);}
   56.3%{color:#c8ff00;text-shadow:0 0 4px rgba(200,255,0,1);}
@@ -35,9 +35,7 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
   57%{color:#fff;text-shadow:0 0 6px rgba(255,255,255,.9),0 0 18px rgba(200,255,0,.4);}
   57.3%{color:#c8ff00;text-shadow:0 0 8px rgba(200,255,0,1),0 0 24px rgba(200,255,0,.5);}
   57.6%{color:#fff;text-shadow:0 0 6px rgba(255,255,255,.9),0 0 18px rgba(200,255,0,.4);}
-  /* calm */
   58%,78%{color:#fff;text-shadow:0 0 6px rgba(255,255,255,.9),0 0 18px rgba(200,255,0,.4);}
-  /* burst 2: longer chaos */
   78.2%{color:#c8ff00;text-shadow:0 0 2px rgba(200,255,0,1);}
   78.4%{color:#fff;text-shadow:0 0 18px rgba(255,255,255,1),0 0 40px rgba(200,255,0,.8);}
   78.6%{color:#c8ff00;text-shadow:none;}
@@ -51,7 +49,6 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
 }
 @keyframes glt1{
   0%,54%{clip-path:none;transform:none;opacity:0;}
-  /* burst 1 */
   55%{clip-path:polygon(0 0,100% 0,100% 22%,0 22%);transform:translateX(-8px);opacity:.9;}
   55.4%{clip-path:polygon(0 40%,100% 40%,100% 58%,0 58%);transform:translateX(6px) skewX(-3deg);opacity:.8;}
   55.8%{clip-path:polygon(0 70%,100% 70%,100% 88%,0 88%);transform:translateX(-5px);opacity:.7;}
@@ -60,9 +57,7 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
   56.6%{clip-path:none;transform:none;opacity:0;}
   57%{clip-path:polygon(0 5%,100% 5%,100% 20%,0 20%);transform:translateX(5px);opacity:.5;}
   57.2%{clip-path:none;transform:none;opacity:0;}
-  /* calm */
   57.5%,77%{clip-path:none;transform:none;opacity:0;}
-  /* burst 2 */
   77.5%{clip-path:polygon(0 0,100% 0,100% 15%,0 15%);transform:translateX(12px);opacity:1;}
   77.7%{clip-path:polygon(0 30%,100% 30%,100% 55%,0 55%);transform:translateX(-10px) skewX(4deg);opacity:.9;}
   77.9%{clip-path:polygon(0 60%,100% 60%,100% 80%,0 80%);transform:translateX(8px) skewX(-2deg);opacity:.8;}
@@ -79,7 +74,6 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
 }
 @keyframes glt2{
   0%,54.2%{clip-path:none;transform:none;opacity:0;}
-  /* burst 1 offset */
   54.8%{clip-path:polygon(0 50%,100% 50%,100% 72%,0 72%);transform:translateX(9px) skewX(2deg);opacity:.7;}
   55.2%{clip-path:polygon(0 10%,100% 10%,100% 28%,0 28%);transform:translateX(-7px);opacity:.8;}
   55.6%{clip-path:polygon(0 65%,100% 65%,100% 82%,0 82%);transform:translateX(5px) skewX(-2deg);opacity:.6;}
@@ -87,9 +81,7 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
   56.3%{clip-path:none;transform:none;opacity:0;}
   56.8%{clip-path:polygon(0 18%,100% 18%,100% 35%,0 35%);transform:translateX(6px);opacity:.5;}
   57.1%{clip-path:none;transform:none;opacity:0;}
-  /* calm */
   57.5%,77.2%{clip-path:none;transform:none;opacity:0;}
-  /* burst 2 offset */
   77.4%{clip-path:polygon(0 55%,100% 55%,100% 78%,0 78%);transform:translateX(-11px) skewX(3deg);opacity:.8;}
   77.6%{clip-path:polygon(0 8%,100% 8%,100% 25%,0 25%);transform:translateX(8px);opacity:.9;}
   77.8%{clip-path:polygon(0 42%,100% 42%,100% 60%,0 60%);transform:translateX(-12px) skewX(-3deg);opacity:.7;}
@@ -170,8 +162,9 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
 @media(max-width:768px){
   header{padding:0 8px;gap:5px;height:44px;overflow-x:auto;flex-wrap:nowrap;}
   header::-webkit-scrollbar{display:none;}
-  .logo{font-size:13px;letter-spacing:3px;}
-  .logo::before,.logo::after{font-size:13px;letter-spacing:3px;}
+  .logo{font-size:11px;letter-spacing:2px;}
+  .logo::before,.logo::after{font-size:11px;letter-spacing:2px;}
+  .logo-sub{font-size:6px;letter-spacing:2px;}
   .vsep{display:none;}
   .btn{padding:4px 7px;font-size:7px;letter-spacing:.8px;}
   .btn-undo{padding:3px 6px;font-size:9px;}
@@ -400,7 +393,9 @@ select:focus{border-color:var(--cyan);}
 <body>
 
 <header>
-  <div class="logo" data-text="CORRUPT">CORRUPT</div>
+  <div class="logo-wrap">
+    <div class="logo" data-text="BASEDIMAGE">BASEDIMAGE</div>
+  </div>
   <div class="vsep"></div>
   <label for="fi2" class="btn" style="cursor:pointer">⬡ Image</label>
   <button class="btn" id="btnLoad" style="display:none">⬡ Image</button>
@@ -1663,7 +1658,7 @@ document.getElementById('btnDownload').addEventListener('click', () => {
   exportX.drawImage(tmpC, 0, 0, outW, outH);
   const scaleLabel = scaleVal === 0 ? 'orig' : scaleVal+'x';
   const a = document.createElement('a');
-  a.download = `corrupt-export-${scaleLabel}.png`;
+  a.download = `basedimage-export-${scaleLabel}.png`;
   a.href = exportC.toDataURL('image/png');
   a.click();
 });
@@ -1794,10 +1789,11 @@ function compositeAll(w,h) {
       }
       const outA = sA + dA*(1-sA);
       if(outA > 0) {
-        result[pi]   = Math.round((bR*sA + dR*dA*(1-sA))/outA);
-        result[pi+1] = Math.round((bG*sA + dG*dA*(1-sA))/outA);
-        result[pi+2] = Math.round((bB*sA + dB*dA*(1-sA))/outA);
-        result[pi+3] = Math.round(outA*255);
+        const invOutA = 1/outA;
+        result[pi]   = (bR*sA + dR*dA*(1-sA))*invOutA + 0.5 | 0;
+        result[pi+1] = (bG*sA + dG*dA*(1-sA))*invOutA + 0.5 | 0;
+        result[pi+2] = (bB*sA + dB*dA*(1-sA))*invOutA + 0.5 | 0;
+        result[pi+3] = outA*255 + 0.5 | 0;
       }
     }
   }
@@ -1805,22 +1801,22 @@ function compositeAll(w,h) {
 }
 
 function blendCh(mode,s,d) {
-  s/=255; d/=255; let r;
+  const sf=s*0.00392156862, df=d*0.00392156862; let r;
   switch(mode){
-    case 'multiply':   r=s*d; break;
-    case 'screen':     r=1-(1-s)*(1-d); break;
-    case 'overlay':    r=d<.5?2*s*d:1-2*(1-s)*(1-d); break;
-    case 'soft-light': r=d<.5?d*(1-(1-2*s+1)*(.5-d)):d+(2*s-1)*(Math.sqrt(d)-d); break;
-    case 'hard-light': r=s<.5?2*s*d:1-2*(1-s)*(1-d); break;
-    case 'color-dodge':r=d===0?0:Math.min(1,d/(1-s)); break;
-    case 'color-burn': r=d===1?1:Math.max(0,1-(1-d)/s); break;
-    case 'darken':     r=Math.min(s,d); break;
-    case 'lighten':    r=Math.max(s,d); break;
-    case 'difference': r=Math.abs(s-d); break;
-    case 'exclusion':  r=s+d-2*s*d; break;
-    default: r=s;
+    case 'multiply':   r=sf*df; break;
+    case 'screen':     r=1-(1-sf)*(1-df); break;
+    case 'overlay':    r=df<.5?2*sf*df:1-2*(1-sf)*(1-df); break;
+    case 'soft-light': r=df<.5?df*(1-(1-2*sf+1)*(.5-df)):df+(2*sf-1)*(Math.sqrt(df)-df); break;
+    case 'hard-light': r=sf<.5?2*sf*df:1-2*(1-sf)*(1-df); break;
+    case 'color-dodge':r=df===0?0:Math.min(1,df/(1-sf+0.001)); break;
+    case 'color-burn': r=df===1?1:Math.max(0,1-(1-df)/(sf+0.001)); break;
+    case 'darken':     r=sf<df?sf:df; break;
+    case 'lighten':    r=sf>df?sf:df; break;
+    case 'difference': r=sf>df?sf-df:df-sf; break;
+    case 'exclusion':  r=sf+df-2*sf*df; break;
+    default: r=sf;
   }
-  return Math.round(Math.max(0,Math.min(1,r))*255);
+  return (r>1?255:r<0?0:r*255+0.5)|0;
 }
 function blendHSL(mode,sR,sG,sB,dR,dG,dB){
   const [sH,sSat,sL]=rgb2hsl(sR,sG,sB);
@@ -1928,13 +1924,26 @@ function paintBrush(L,cx,cy,dx,dy){
 const cl=(v,lo=0,hi=255)=>v<lo?lo:v>hi?hi:v;
 
 function fxColorGrade(d,w,h,S){
-  const r=new Uint8ClampedArray(d),br=S.br*2.55,ex=S.ex/100,co=S.co/100,sat=(S.sa+100)/100,rB=S.cr*2.55,gB=S.cg*2.55,bB=S.cb*2.55;
+  const r=new Uint8ClampedArray(d);
+  const br=S.br*2.55, ex=S.ex/100, co=S.co/100;
+  const sat=(S.sa+100)/100, rB=S.cr*2.55, gB=S.cg*2.55, bB=S.cb*2.55;
+  const doHSL = S.sa!==0||S.hu!==0;
+  const huShift = S.hu/360;
+  const n1co = 1+co;
   for(let i=0;i<r.length;i+=4){
-    let rv=r[i]*ex+rB+br,gv=r[i+1]*ex+gB+br,bv=r[i+2]*ex+bB+br;
-    rv=(rv-128)*(1+co)+128;gv=(gv-128)*(1+co)+128;bv=(bv-128)*(1+co)+128;
-    if(S.sa!==0||S.hu!==0){const[hh,s,l]=rgb2hsl(rv,gv,bv);const ns=cl(s*sat,0,1),nh=((hh+S.hu/360)%1+1)%1;[rv,gv,bv]=hsl2rgb(nh,ns,l);}
-    r[i]=cl(rv);r[i+1]=cl(gv);r[i+2]=cl(bv);
-  }return r;
+    let rv=r[i]*ex+rB+br, gv=r[i+1]*ex+gB+br, bv=r[i+2]*ex+bB+br;
+    rv=(rv-128)*n1co+128; gv=(gv-128)*n1co+128; bv=(bv-128)*n1co+128;
+    if(doHSL){
+      const[hh,s,l]=rgb2hsl(rv,gv,bv);
+      const ns=s*sat<0?0:s*sat>1?1:s*sat;
+      const nh=((hh+huShift)%1+1)%1;
+      [rv,gv,bv]=hsl2rgb(nh,ns,l);
+    }
+    r[i]=rv<0?0:rv>255?255:rv+0.5|0;
+    r[i+1]=gv<0?0:gv>255?255:gv+0.5|0;
+    r[i+2]=bv<0?0:bv>255?255:bv+0.5|0;
+  }
+  return r;
 }
 function rgb2hsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h=0,s=0,l=(mx+mn)/2;if(mx!==mn){const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);switch(mx){case r:h=((g-b)/d+(g<b?6:0))/6;break;case g:h=((b-r)/d+2)/6;break;case b:h=((r-g)/d+4)/6;break;}}return[h,s,l];}
 function hsl2rgb(h,s,l){if(s===0){const v=l*255;return[v,v,v];}const q=l<.5?l*(1+s):l+s-l*s,p=2*l-q;const f=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<.5)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};return[f(p,q,h+1/3)*255,f(p,q,h)*255,f(p,q,h-1/3)*255];}
@@ -2933,47 +2942,95 @@ if(btnAnimate){
 }
 
 let animLastFrame = 0;
+let animDt = 0; // accumulated delta time in seconds
+
+// Cost tiers — low cost effects animate every frame, high cost throttle
+const ANIM_HEAVY = new Set(['eVor','eAscii','eFeed','eOil','eHalf','eDth','eMosh']);
+let animHeavyFrame = 0; // counter for heavy effect throttle
+
 function animTick() {
   if(!animOn) return;
   const now = performance.now();
-  // Throttle to ~30fps
-  if(now - animLastFrame < 33) { animRAF = requestAnimationFrame(animTick); return; }
+  const elapsed = now - animLastFrame;
+  if(elapsed < 16) { animRAF = requestAnimationFrame(animTick); return; } // ~60fps gate
   animLastFrame = now;
-  animT += 1.2;
+  animDt = elapsed / 1000; // seconds since last frame
+  animT += elapsed * 0.06; // time in ~degrees, frame-rate independent
+  animHeavyFrame++;
+
+  // Only invalidate if at least one effect is active on a layer
+  const runHeavy = animHeavyFrame % 3 === 0; // heavy effects at 20fps max
 
   layers.forEach(L => {
     if(!L.S) return;
-    let changed = false;
-    // Water — sweep phase visibly
-    if(L.S.eWater) { L.S.wphase=(L.S.wphase+3.5)%360; changed=true; }
-    // CRT ghost drift
-    if(L.S.eCrt&&L.S.crtrpa>0) { L.S.crtrpp=(L.S.crtrpp+2.5)%360; changed=true; }
-    // RGB Split pulse
-    if(L.S.eRgb) { L.S.rx=Math.min(100,Math.abs(Math.sin(animT*0.05)*25+Math.sin(animT*0.09)*15)); changed=true; }
-    // Chromatic aberration breathe
-    if(L.S.eChrAb) { L.S.chrabd=40+Math.abs(Math.sin(animT*0.04))*140; changed=true; }
-    // Pixel drift cycle seed fast
-    if(L.S.eDrift) { L.S.driftseed=((L.S.driftseed+3)%998)+1; changed=true; }
-    // Block glitch random spike
-    if(L.S.eBlk&&Math.random()<0.15) { L.S.bsd=Math.floor(Math.random()*999)+1; changed=true; }
-    // Feedback oscillate decay
-    if(L.S.eFeed) { L.S.feedd=60+Math.abs(Math.sin(animT*0.06))*35; changed=true; }
-    // Hue rotation
-    if(L.S.sa>20||L.S.eDth) { L.S.hu=(L.S.hu+0.8)%360; changed=true; }
-    // Scanlines scroll
-    if(L.S.eScl) { L.S.sop=Math.round(40+Math.sin(animT*0.07)*35); changed=true; }
-    // Voronoi cell shift
-    if(L.S.eVor) { L.S.vors=((L.S.vors+2)%998)+1; changed=true; }
-    // Halftone angle rotate
-    if(L.S.eHalf) { L.S.halfa=(L.S.halfa+1.5)%180; changed=true; }
-    if(changed) invalidateLayer(L);
+    let lightChanged = false;
+    let heavyChanged = false;
+
+    // ── LIGHT EFFECTS (every frame, cheap) ──
+    if(L.S.eWater) {
+      L.S.wphase = (L.S.wphase + animDt * 120) % 360; // 120 deg/sec
+      lightChanged = true;
+    }
+    if(L.S.eCrt && L.S.crtrpa > 0) {
+      L.S.crtrpp = (L.S.crtrpp + animDt * 90) % 360;
+      lightChanged = true;
+    }
+    if(L.S.eRgb) {
+      const t = animT * 0.001;
+      L.S.rx = Math.min(100, Math.abs(Math.sin(t*1.3)*22 + Math.sin(t*2.1)*12));
+      lightChanged = true;
+    }
+    if(L.S.eChrAb) {
+      L.S.chrabd = 30 + Math.abs(Math.sin(animT * 0.0008)) * 150;
+      lightChanged = true;
+    }
+    if(L.S.eScl) {
+      L.S.sop = 35 + Math.sin(animT * 0.001) * 30;
+      lightChanged = true;
+    }
+    // Hue rotation — very cheap
+    if(L.S.sa > 10 || L.S.eDth) {
+      L.S.hu = (L.S.hu + animDt * 25) % 360;
+      lightChanged = true;
+    }
+    // CRT ripple phase
+    if(L.S.eCrt && L.S.crtrpa > 0) {
+      L.S.crtrpa = Math.max(2, Math.abs(Math.sin(animT * 0.0007)) * 25);
+      lightChanged = true;
+    }
+
+    // ── HEAVY EFFECTS (throttled to ~20fps) ──
+    if(runHeavy) {
+      if(L.S.eDrift) {
+        L.S.driftseed = ((L.S.driftseed + 5) % 998) + 1;
+        heavyChanged = true;
+      }
+      if(L.S.eBlk && Math.random() < 0.25) {
+        L.S.bsd = Math.floor(Math.random() * 999) + 1;
+        heavyChanged = true;
+      }
+      if(L.S.eFeed) {
+        L.S.feedd = 55 + Math.abs(Math.sin(animT * 0.0009)) * 40;
+        heavyChanged = true;
+      }
+      if(L.S.eVor) {
+        L.S.vors = ((L.S.vors + 4) % 998) + 1;
+        heavyChanged = true;
+      }
+      if(L.S.eHalf) {
+        L.S.halfa = (L.S.halfa + animDt * 40) % 180;
+        heavyChanged = true;
+      }
+    }
+
+    if(lightChanged || heavyChanged) invalidateLayer(L);
   });
 
   if(imgW) {
-    const comp=compositeAll(imgW,imgH);
-    dctx.putImageData(new ImageData(comp,imgW,imgH),0,0);
+    const comp = compositeAll(imgW, imgH);
+    dctx.putImageData(new ImageData(comp, imgW, imgH), 0, 0);
   }
-  animRAF=requestAnimationFrame(animTick);
+  animRAF = requestAnimationFrame(animTick);
 }
 
 
@@ -3086,12 +3143,11 @@ function animTick() {
 (function(){
   const logo=document.querySelector('.logo');
   if(!logo)return;
-  // Spawn extra glitch spans
   const spans=[];
   const colors=['#c8ff00','#ffffff','#c8ff00'];
   for(let i=0;i<3;i++){
     const s=document.createElement('span');
-    s.textContent='CORRUPT';
+    s.textContent='BASEDIMAGE';
     s.style.cssText=`position:absolute;top:0;left:0;font-family:'Orbitron',sans-serif;font-weight:900;font-size:20px;letter-spacing:8px;pointer-events:none;opacity:0;color:${colors[i]};mix-blend-mode:screen;will-change:transform,clip-path;`;
     logo.appendChild(s);
     spans.push(s);
@@ -3099,7 +3155,6 @@ function animTick() {
   function rnd(a,b){return a+Math.random()*(b-a);}
   function ri(a,b){return Math.floor(rnd(a,b+1));}
   function hide(s){s.style.opacity='0';s.style.clipPath='none';s.style.transform='none';}
-
   function burst(intensity){
     const frames=ri(3,5+intensity*2);
     const spd=40+Math.max(0,3-intensity)*20;
@@ -3119,7 +3174,6 @@ function animTick() {
     }
     tick();
   }
-
   function schedule(){
     const calm=rnd(1800,8000);
     setTimeout(()=>{
