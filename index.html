@@ -311,6 +311,18 @@ select:focus{border-color:var(--cyan);}
 .blend-mode-label{font-family:'Orbitron',sans-serif;font-size:6.5px;font-weight:700;letter-spacing:2px;color:var(--muted);flex-shrink:0;text-transform:uppercase;}
 .blend-mode-sel{flex:1;font-size:7.5px;padding:3px 5px;background:rgba(0,0,0,.3);border:1px solid var(--b2);color:var(--text);}
 .zoom-readout{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--cyan);min-width:32px;}
+
+/* BRUSH CURSOR OVERLAY */
+#brushCursor{position:absolute;top:0;left:0;pointer-events:none;z-index:20;display:none;}
+.canvas-container.mask-mode #dc,.canvas-container.warp-mode #dc{cursor:none;}
+.canvas-container.panning-free{cursor:grabbing!important;}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;}
+.toast{background:var(--surf2);border:1px solid var(--b2);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;padding:6px 16px;text-transform:uppercase;opacity:0;transition:opacity .18s ease;clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);white-space:nowrap;}
+.toast.show{opacity:1;}
+.toast.ok{border-color:rgba(0,229,255,.5);color:var(--cyan);}
+.toast.warn{border-color:rgba(255,149,0,.4);color:var(--orange);}
 #dc{display:block;max-width:100%;max-height:calc(100vh - 128px);cursor:crosshair;image-rendering:pixelated;box-shadow:0 0 0 1px rgba(0,229,255,.15),0 0 60px rgba(0,0,0,.9),0 0 0 1px var(--b2);}
 .canvas-container.has-image #dc{box-shadow:0 0 0 1px rgba(0,229,255,.25),0 0 40px rgba(0,229,255,.04),0 0 80px rgba(0,0,0,.9);}
 #maskCanvas{position:absolute;top:0;left:0;pointer-events:none;opacity:.55;display:none;}
@@ -732,6 +744,7 @@ select:focus{border-color:var(--cyan);}
       <canvas id="dc"></canvas>
       <canvas id="maskCanvas"></canvas>
       <canvas id="origCanvas"></canvas>
+      <canvas id="brushCursor"></canvas>
     </div>
   </div>
   <div class="canvas-toolbar">
@@ -762,6 +775,7 @@ select:focus{border-color:var(--cyan);}
     <span class="lp-title">LAYERS</span>
     <button class="btn btn-sm btn-cyan" id="btnAddLayer">+ Add</button>
     <button class="btn btn-sm" id="btnDupLayer">⧉ Dup</button>
+    <button class="btn btn-sm" id="btnMerge" title="Merge visible layers">⊕ Merge</button>
   </div>
   <div class="layers-list" id="layersList"></div>
   <div class="lp-section">
@@ -825,6 +839,9 @@ select:focus{border-color:var(--cyan);}
 <input type="file" id="fi2" accept="image/*" style="position:fixed;top:-9999px;left:-9999px">
 <input type="file" id="fiVid" accept="video/*" style="position:fixed;top:-9999px;left:-9999px">
 <input type="file" id="fiDisplace" accept="image/*" style="position:fixed;top:-9999px;left:-9999px">
+
+<!-- Toast notifications -->
+<div class="toast-wrap" id="toastWrap"></div>
 
 <!-- Mobile layers drawer button -->
 <button class="layers-drawer-btn" id="btnLayersDrawer">⧉ Layers</button>
@@ -1231,15 +1248,15 @@ function renderLayersList() {
     const name = document.createElement('span');
     name.className = 'layer-name';
     name.textContent = L.name;
-    name.addEventListener('dblclick', e => {
+    name.addEventListener('click', e => {
       e.stopPropagation();
       const inp = document.createElement('input');
       inp.className = 'layer-name-input';
       inp.value = L.name;
       inp.addEventListener('blur', () => { L.name = inp.value; renderLayersList(); });
-      inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); });
+      inp.addEventListener('keydown', e => { if(e.key==='Enter') inp.blur(); if(e.key==='Escape'){inp.value=L.name;inp.blur();} });
       name.replaceWith(inp);
-      inp.focus();
+      inp.select();
     });
 
     // Mask indicator dot
@@ -2882,7 +2899,192 @@ document.getElementById('presetSelect').addEventListener('change',function(){
 refreshPresetSelect();
 
 // ══════════════════════════════════════════════════════
-// SPACE — BEFORE/AFTER TOGGLE
+// TOAST NOTIFICATIONS
+// ══════════════════════════════════════════════════════
+function showToast(msg, type='ok', duration=1800) {
+  const wrap = document.getElementById('toastWrap');
+  let t = wrap.querySelector('.toast');
+  if(!t) { t = document.createElement('div'); wrap.appendChild(t); }
+  clearTimeout(t._hide);
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  t.style.transition = 'none';
+  t.style.opacity = '1';
+  t._hide = setTimeout(() => {
+    t.style.transition = 'opacity .18s ease';
+    t.style.opacity = '0';
+  }, duration);
+}
+
+// Hook toasts onto key actions
+const _origDoUndo = doUndo;
+function doUndo() { _origDoUndo(); if(undoStack.length >= 0) showToast('Undo'); }
+const _origDoRedo = doRedo;
+function doRedo() { _origDoRedo(); showToast('Redo'); }
+
+document.getElementById('btnDownload').addEventListener('click', () => {
+  setTimeout(() => showToast('Exported'), 200);
+}, true);
+
+document.getElementById('btnSavePreset').addEventListener('click', () => {
+  setTimeout(() => showToast('Preset saved'), 100);
+}, true);
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  showToast('Layer reset');
+}, true);
+
+document.getElementById('btnRandomize').addEventListener('click', () => {
+  showToast('Randomized');
+}, true);
+
+// ══════════════════════════════════════════════════════
+// BRUSH CURSOR OVERLAY
+// ══════════════════════════════════════════════════════
+const brushCv = document.getElementById('brushCursor');
+const brushCtx2 = brushCv.getContext('2d');
+let brushCursorVisible = false;
+let lastMouseX = 0, lastMouseY = 0;
+
+function drawBrushCursor(x, y) {
+  const L = getActiveLayer();
+  const ccont = document.getElementById('canvasCont');
+  if(!imgW) return;
+
+  // Get canvas scale factor
+  const rect = dc.getBoundingClientRect();
+  const scaleX = rect.width / imgW;
+
+  // Determine radius in screen pixels
+  let radiusPx;
+  if(maskPaintMode) {
+    radiusPx = maskBrushSz * scaleX * 0.5;
+  } else if(L && L.S && (L.S.lTool === 'warp' || L.S.lTool === 'swirl' || L.S.lTool === 'expand' || L.S.lTool === 'contract')) {
+    radiusPx = (L.S.lbs || 40) * scaleX * 0.5;
+  } else return;
+
+  brushCv.width = rect.width;
+  brushCv.height = rect.height;
+  brushCv.style.width = rect.width + 'px';
+  brushCv.style.height = rect.height + 'px';
+  brushCv.style.display = 'block';
+
+  brushCtx2.clearRect(0, 0, brushCv.width, brushCv.height);
+
+  // Position relative to canvas wrapper
+  const wrapRect = document.getElementById('cWrap').getBoundingClientRect();
+  const cx = x - wrapRect.left;
+  const cy = y - wrapRect.top;
+
+  const color = maskPaintMode === 'erase' ? '#00e5ff' : maskPaintMode === 'paint' ? '#ff2d78' : '#a259ff';
+
+  brushCtx2.beginPath();
+  brushCtx2.arc(cx, cy, Math.max(2, radiusPx), 0, Math.PI * 2);
+  brushCtx2.strokeStyle = color;
+  brushCtx2.lineWidth = 1.5;
+  brushCtx2.globalAlpha = 0.8;
+  brushCtx2.stroke();
+  // crosshair center dot
+  brushCtx2.beginPath();
+  brushCtx2.arc(cx, cy, 1.5, 0, Math.PI * 2);
+  brushCtx2.fillStyle = color;
+  brushCtx2.globalAlpha = 1;
+  brushCtx2.fill();
+}
+
+function hideBrushCursor() {
+  brushCv.style.display = 'none';
+  brushCtx2.clearRect(0, 0, brushCv.width, brushCv.height);
+}
+
+// Hook into dc mousemove
+const dcCont = document.getElementById('canvasCont');
+dcCont.addEventListener('mousemove', e => {
+  lastMouseX = e.clientX; lastMouseY = e.clientY;
+  const L = getActiveLayer();
+  const isBrushMode = maskPaintMode || (L && L.S && ['warp','swirl','expand','contract'].includes(L.S.lTool));
+  if(isBrushMode && imgW) {
+    dcCont.classList.add(maskPaintMode ? 'mask-mode' : 'warp-mode');
+    dcCont.classList.remove(maskPaintMode ? 'warp-mode' : 'mask-mode');
+    drawBrushCursor(e.clientX, e.clientY);
+  } else {
+    dcCont.classList.remove('mask-mode','warp-mode');
+    hideBrushCursor();
+  }
+});
+dcCont.addEventListener('mouseleave', () => { hideBrushCursor(); dcCont.classList.remove('mask-mode','warp-mode'); });
+
+// Update brush cursor when brush size slider changes
+document.getElementById('maskBrushSize').addEventListener('input', () => {
+  if(maskPaintMode && imgW) drawBrushCursor(lastMouseX, lastMouseY);
+});
+
+// ══════════════════════════════════════════════════════
+// ALT/MIDDLE-CLICK PAN (without zoom mode)
+// ══════════════════════════════════════════════════════
+(function(){
+  const wrap = document.getElementById('cWrap');
+  let panning = false, px = 0, py = 0;
+  let tx = 0, ty = 0;
+
+  function getCurrentTranslate() {
+    const t = wrap.style.transform;
+    if(!t) return {x:0,y:0};
+    const m = t.match(/translate\(([^,]+)px,\s*([^)]+)px\)/);
+    return m ? {x:parseFloat(m[1]),y:parseFloat(m[2])} : {x:0,y:0};
+  }
+
+  dcCont.addEventListener('mousedown', e => {
+    if(e.button === 1 || (e.button === 0 && e.altKey)) {
+      if(document.getElementById('btnZoomMode').classList.contains('zoom-active')) return; // zoom mode handles its own pan
+      e.preventDefault();
+      panning = true;
+      const cur = getCurrentTranslate();
+      tx = cur.x; ty = cur.y;
+      px = e.clientX; py = e.clientY;
+      dcCont.classList.add('panning-free');
+    }
+  });
+  document.addEventListener('mousemove', e => {
+    if(!panning) return;
+    const dx = e.clientX - px, dy = e.clientY - py;
+    wrap.style.transform = `translate(${tx+dx}px,${ty+dy}px)`;
+  });
+  document.addEventListener('mouseup', e => {
+    if(panning && (e.button===1||e.button===0)) {
+      panning = false;
+      dcCont.classList.remove('panning-free');
+    }
+  });
+})();
+
+// ══════════════════════════════════════════════════════
+// MERGE VISIBLE LAYERS
+// ══════════════════════════════════════════════════════
+document.getElementById('btnMerge').addEventListener('click', () => {
+  const visible = layers.filter(L => L.visible && L.origData);
+  if(visible.length < 2) { showToast('Need 2+ visible layers', 'warn'); return; }
+  if(!imgW) return;
+  pushUndo();
+
+  // Composite all visible layers into one
+  const merged = compositeAll(imgW, imgH);
+  const mergedImg = new ImageData(merged, imgW, imgH);
+
+  // Create single merged layer
+  const newL = createLayer('Merged', mergedImg, imgW, imgH);
+  newL.wX = new Float32Array(imgW * imgH);
+  newL.wY = new Float32Array(imgW * imgH);
+
+  // Remove all visible layers, keep hidden ones
+  const hidden = layers.filter(L => !L.visible || !L.origData);
+  layers = [newL, ...hidden];
+  activeLayerIdx = 0;
+
+  renderLayersList();
+  schedRender();
+  showToast('Layers merged');
+});
 // ══════════════════════════════════════════════════════
 let spaceHeld = false;
 document.addEventListener('keydown', e => {
