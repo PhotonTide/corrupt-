@@ -127,6 +127,8 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
 .export-group select{font-size:7.5px;padding:5px 6px;width:auto;background:rgba(200,255,0,.04);border:1px solid rgba(200,255,0,.35);border-right:none;color:var(--acid);clip-path:polygon(4px 0%,100% 0%,100% 100%,0% 100%);cursor:pointer;letter-spacing:1px;}
 .export-group select:focus{outline:none;border-color:var(--acid);}
 .export-group .btn-export{clip-path:polygon(0% 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);}
+.btn-export.recording{border-color:var(--mag)!important;color:var(--mag)!important;background:rgba(255,45,120,.08)!important;animation:recPulse 1s ease-in-out infinite;}
+@keyframes recPulse{0%,100%{box-shadow:0 0 6px rgba(255,45,120,.3);}50%{box-shadow:0 0 14px rgba(255,45,120,.7);}}
 .btn-undo{border-color:rgba(189,208,224,.2);color:var(--chrome);font-size:10px;padding:4px 9px;}
 .btn-undo:hover{border-color:var(--chrome);color:var(--chrome3);background:rgba(255,255,255,.04);}
 .btn-undo:disabled{opacity:.25;cursor:default;pointer-events:none;}
@@ -311,6 +313,10 @@ select:focus{border-color:var(--cyan);}
 .canvas-container.zoom-mode{overflow:visible;}
 .canvas-wrapper{position:relative;display:none;line-height:0;transform-origin:50% 50%;}
 .btn.zoom-active{border-color:var(--cyan);color:var(--cyan);background:rgba(0,229,255,.08);box-shadow:0 0 8px rgba(0,229,255,.2);}
+.btn.anim-active{border-color:var(--acid);color:var(--acid);background:rgba(200,255,0,.06);box-shadow:0 0 8px rgba(200,255,0,.2);}
+.blend-mode-row{display:flex;align-items:center;gap:6px;padding:5px 0 7px;border-bottom:1px solid var(--b1);margin-bottom:4px;}
+.blend-mode-label{font-family:'Orbitron',sans-serif;font-size:6.5px;font-weight:700;letter-spacing:2px;color:var(--muted);flex-shrink:0;text-transform:uppercase;}
+.blend-mode-sel{flex:1;font-size:7.5px;padding:3px 5px;background:rgba(0,0,0,.3);border:1px solid var(--b2);color:var(--text);}
 .zoom-readout{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--cyan);min-width:32px;}
 #dc{display:block;max-width:100%;max-height:calc(100vh - 128px);cursor:crosshair;image-rendering:pixelated;box-shadow:0 0 0 1px rgba(0,229,255,.15),0 0 60px rgba(0,0,0,.9),0 0 0 1px var(--b2);}
 .canvas-container.has-image #dc{box-shadow:0 0 0 1px rgba(0,229,255,.25),0 0 40px rgba(0,229,255,.04),0 0 80px rgba(0,0,0,.9);}
@@ -428,6 +434,13 @@ select:focus{border-color:var(--cyan);}
         <option value="4">4×</option>
         <option value="0">Original</option>
       </select>
+      <select id="exportDur" title="Video duration" style="display:none">
+        <option value="3">3s</option>
+        <option value="5">5s</option>
+        <option value="10">10s</option>
+        <option value="15">15s</option>
+        <option value="30">30s</option>
+      </select>
       <button class="btn btn-export" id="btnDownload">↓ Export</button>
     </div>
   </div>
@@ -466,6 +479,7 @@ select:focus{border-color:var(--cyan);}
 
     <!-- GLITCH -->
     <div class="panel" id="p-glitch">
+      <div class="blend-mode-row"><span class="blend-mode-label">Group Blend</span><select id="sel-bGlitch" class="blend-mode-sel"><option value="normal">Normal</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="multiply">Multiply</option><option value="soft-light">Soft Light</option><option value="difference">Difference</option><option value="color-dodge">Dodge</option><option value="lighten">Lighten</option><option value="darken">Darken</option></select></div>
       <div class="sec">RGB Split</div>
       <div class="tr">Enable <label class="toggle r"><input type="checkbox" id="e-rgb"><span class="ts"></span></label></div>
       <div class="cg"><div class="cl">Horizontal <span class="v r" id="v-rx">0</span></div><input type="range" class="r" id="s-rx" min="0" max="100" value="0"></div>
@@ -518,6 +532,7 @@ select:focus{border-color:var(--cyan);}
 
     <!-- FX -->
     <div class="panel" id="p-fx">
+      <div class="blend-mode-row"><span class="blend-mode-label">Group Blend</span><select id="sel-bFX" class="blend-mode-sel"><option value="normal">Normal</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="multiply">Multiply</option><option value="soft-light">Soft Light</option><option value="difference">Difference</option><option value="color-dodge">Dodge</option><option value="lighten">Lighten</option><option value="darken">Darken</option></select></div>
       <div class="tr">Invert <label class="toggle"><input type="checkbox" id="e-inv"><span class="ts"></span></label></div>
       <div class="ch-div"></div>
       <div class="tr">Posterize <label class="toggle"><input type="checkbox" id="e-pos"><span class="ts"></span></label></div>
@@ -543,10 +558,19 @@ select:focus{border-color:var(--cyan);}
       <div class="sec">Vignette</div>
       <div class="tr">Enable <label class="toggle"><input type="checkbox" id="e-vig"><span class="ts"></span></label></div>
       <div class="cg"><div class="cl">Strength <span class="v c" id="v-vig">50</span></div><input type="range" class="c" id="s-vig" min="0" max="100" value="50"></div>
+      <div class="ch-div"></div>
+      <div class="sec">Displacement Map</div>
+      <div class="tr">Enable <label class="toggle c"><input type="checkbox" id="e-displace"><span class="ts"></span></label></div>
+      <div class="cg"><div class="cl">Map Image</div><label class="btn btn-sm btn-full" for="fiDisplace" style="text-align:center;cursor:pointer;clip-path:none">⊕ Load Map</label></div>
+      <div class="cg" id="displaceNameRow" style="display:none"><div class="cl" style="font-size:7px;color:var(--cyan)" id="displaceName">no map</div></div>
+      <div class="cg"><div class="cl">Strength <span class="v c" id="v-displaceStr">30</span>px</div><input type="range" class="c" id="s-displaceStr" min="0" max="200" value="30"></div>
+      <div class="cg"><div class="cl">Channel</div><select id="sel-displaceChannel"><option value="lum">Luminance</option><option value="r">Red</option><option value="g">Green</option><option value="b">Blue</option></select></div>
+      <div class="cg"><div class="cl">Mode</div><select id="sel-displaceMode"><option value="xy">X+Y</option><option value="x">X only</option><option value="y">Y only</option><option value="radial">Radial</option></select></div>
     </div>
 
     <!-- CRT -->
     <div class="panel" id="p-crt">
+      <div class="blend-mode-row"><span class="blend-mode-label">Group Blend</span><select id="sel-bCRT" class="blend-mode-sel"><option value="normal">Normal</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="multiply">Multiply</option><option value="soft-light">Soft Light</option><option value="difference">Difference</option><option value="color-dodge">Dodge</option><option value="lighten">Lighten</option><option value="darken">Darken</option></select></div>
       <div class="sec">Phosphor</div>
       <div class="tr">CRT Enable <label class="toggle g"><input type="checkbox" id="e-crt"><span class="ts"></span></label></div>
       <div class="cg"><div class="cl">Mode</div><select id="sel-crtm"><option value="color">Color</option><option value="bw">B &amp; W</option><option value="green" selected>Green</option><option value="amber">Amber</option><option value="blue">Blue</option><option value="red">Red</option></select></div>
@@ -579,6 +603,7 @@ select:focus{border-color:var(--cyan);}
 
     <!-- MOSH -->
     <div class="panel" id="p-mosh">
+      <div class="blend-mode-row"><span class="blend-mode-label">Group Blend</span><select id="sel-bMosh" class="blend-mode-sel"><option value="normal">Normal</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="multiply">Multiply</option><option value="soft-light">Soft Light</option><option value="difference">Difference</option><option value="color-dodge">Dodge</option><option value="lighten">Lighten</option><option value="darken">Darken</option></select></div>
       <div class="sec">Block Mosh</div>
       <div class="tr">Enable <label class="toggle o"><input type="checkbox" id="e-mosh"><span class="ts"></span></label></div>
       <div class="cg"><div class="cl">Block Size <span class="v o" id="v-mbsz">16</span>px</div><input type="range" class="o" id="s-mbsz" min="4" max="64" value="16"></div>
@@ -604,6 +629,7 @@ select:focus{border-color:var(--cyan);}
 
     <!-- WATER -->
     <div class="panel" id="p-water">
+      <div class="blend-mode-row"><span class="blend-mode-label">Group Blend</span><select id="sel-bWater" class="blend-mode-sel"><option value="normal">Normal</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="multiply">Multiply</option><option value="soft-light">Soft Light</option><option value="difference">Difference</option><option value="color-dodge">Dodge</option><option value="lighten">Lighten</option><option value="darken">Darken</option></select></div>
       <div class="sec">Water Ripple</div>
       <div class="tr">Enable <label class="toggle t"><input type="checkbox" id="e-water"><span class="ts"></span></label></div>
       <div class="cg"><div class="cl">Source</div><select id="sel-wsrc"><option value="radial">Radial</option><option value="top">Top Edge</option><option value="bottom">Bottom Edge</option><option value="left">Left Edge</option><option value="diagonal">Diagonal</option><option value="multi">Multi-source</option></select></div>
@@ -628,6 +654,7 @@ select:focus{border-color:var(--cyan);}
 
     <!-- MORE -->
     <div class="panel" id="p-more">
+      <div class="blend-mode-row"><span class="blend-mode-label">Group Blend</span><select id="sel-bMore" class="blend-mode-sel"><option value="normal">Normal</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="multiply">Multiply</option><option value="soft-light">Soft Light</option><option value="difference">Difference</option><option value="color-dodge">Dodge</option><option value="lighten">Lighten</option><option value="darken">Darken</option></select></div>
       <div class="sec">Halftone</div>
       <div class="tr">Enable <label class="toggle pk"><input type="checkbox" id="e-half"><span class="ts"></span></label></div>
       <div class="cg"><div class="cl">Type</div><select id="sel-halft"><option value="dot">Dots</option><option value="line">Lines</option><option value="cross">Cross</option><option value="diamond">Diamond</option></select></div>
@@ -722,6 +749,7 @@ select:focus{border-color:var(--cyan);}
     <div class="vsep"></div>
     <button class="btn btn-sm" id="btnZoomMode" title="Zoom mode — scroll to zoom, drag to pan">⌖ Zoom</button>
     <span class="zoom-readout" id="zoomReadout" style="display:none">100%</span>
+    <button class="btn btn-sm" id="btnAnimate" title="Animate — advances time-based effects">▶ Animate</button>
     <div class="vsep"></div>
     <div class="mix-row">
       <span class="mix-label">MIX</span>
@@ -801,6 +829,7 @@ select:focus{border-color:var(--cyan);}
 <input type="file" id="fi1" accept="image/*,video/*" style="position:fixed;top:-9999px;left:-9999px">
 <input type="file" id="fi2" accept="image/*" style="position:fixed;top:-9999px;left:-9999px">
 <input type="file" id="fiVid" accept="video/*" style="position:fixed;top:-9999px;left:-9999px">
+<input type="file" id="fiDisplace" accept="image/*" style="position:fixed;top:-9999px;left:-9999px">
 
 <!-- Mobile layers drawer button -->
 <button class="layers-drawer-btn" id="btnLayersDrawer">⧉ Layers</button>
@@ -846,6 +875,10 @@ function defaultS(){return{
   eGrain:false,grainamt:30,grainsize:1,grainmono:false,
   eLut:false,lutpreset:'kodak',lutstr:100,
   eEdge:false,edgestr:80,edgecol:'cyan',edgethick:1,
+  // Displacement map
+  eDisplace:false,displaceStr:30,displaceChannel:'lum',displaceMode:'xy',
+  // Per-effect blend modes (normal = replace, otherwise blend effect onto pre-effect state)
+  bBlend:'normal',bGlitch:'normal',bFX:'normal',bCRT:'normal',bMosh:'normal',bWater:'normal',bMore:'normal',
 };}
 
 // ══════════════════════════════════════════════════════
@@ -924,7 +957,7 @@ function bindSlider(sid, key, fmt) {
   el.addEventListener('input', () => {
     const v = parseFloat(el.value);
     const L = getActiveLayer();
-    if (L) L.S[key] = v;
+    if (L) { L.S[key] = v; invalidateLayer(L); }
     if (vEl) vEl.textContent = fmt ? fmt(v) : v;
     updateSliderFill(el);
     schedRenderWithUndo();
@@ -935,7 +968,7 @@ function bindCB(id, key) {
   if (!el) return;
   el.addEventListener('change', () => {
     const L = getActiveLayer();
-    if (L) L.S[key] = el.checked;
+    if (L) { L.S[key] = el.checked; invalidateLayer(L); }
     pushUndo();
     schedRender();
   });
@@ -945,7 +978,7 @@ function bindSel(id, key) {
   if (!el) return;
   el.addEventListener('change', () => {
     const L = getActiveLayer();
-    if (L) L.S[key] = el.value;
+    if (L) { L.S[key] = el.value; invalidateLayer(L); }
     pushUndo();
     schedRender();
   });
@@ -1010,6 +1043,34 @@ bindCB('e-drift','eDrift'); bindSlider('driftamt','driftamt',v=>v+'px'); bindSli
 bindCB('e-grain','eGrain'); bindSlider('grainamt','grainamt'); bindSlider('grainsize','grainsize'); bindCB('e-grainmono','grainmono');
 bindCB('e-lut','eLut'); bindSel('sel-lutpreset','lutpreset'); bindSlider('lutstr','lutstr',v=>Math.round(v)+'%');
 bindCB('e-edge','eEdge'); bindSlider('edgestr','edgestr'); bindSlider('edgethick','edgethick'); bindSel('sel-edgecol','edgecol');
+// Displacement
+bindCB('e-displace','eDisplace'); bindSlider('displaceStr','displaceStr',v=>Math.round(v)+'px'); bindSel('sel-displaceChannel','displaceChannel'); bindSel('sel-displaceMode','displaceMode');
+// Per-effect blend modes — invalidate cache on change
+['bGlitch','bFX','bCRT','bMosh','bWater','bMore'].forEach(key=>{
+  const el=document.getElementById('sel-'+key); if(!el)return;
+  el.addEventListener('change',()=>{const L=getActiveLayer();if(L){L.S[key]=el.value;invalidateLayer(L);}schedRender();});
+});
+// Displacement file input
+document.getElementById('fiDisplace').addEventListener('change',function(){
+  const f=this.files&&this.files[0]; this.value='';
+  if(!f||!f.type.startsWith('image/'))return;
+  const url=URL.createObjectURL(f);
+  const img=new Image();
+  img.onload=()=>{
+    const tmpC=document.createElement('canvas');
+    tmpC.width=img.naturalWidth; tmpC.height=img.naturalHeight;
+    tmpC.getContext('2d').drawImage(img,0,0);
+    const data=tmpC.getContext('2d').getImageData(0,0,tmpC.width,tmpC.height);
+    URL.revokeObjectURL(url);
+    const L=getActiveLayer(); if(!L)return;
+    L.displaceData=data;
+    invalidateLayer(L);
+    document.getElementById('displaceNameRow').style.display='';
+    document.getElementById('displaceName').textContent=f.name;
+    schedRender();
+  };
+  img.src=url;
+});
 
 // Tabs
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
@@ -1241,6 +1302,7 @@ function syncSidebarFromS(S) {
     ['driftamt',S.driftamt],['driftspd',S.driftspd],['driftseed',S.driftseed],
     ['grainamt',S.grainamt],['grainsize',S.grainsize],
     ['lutstr',S.lutstr],['edgestr',S.edgestr],['edgethick',S.edgethick],
+    ['displaceStr',S.displaceStr],
   ];
   sliders.forEach(([id,val])=>{
     const el=document.getElementById('s-'+id);
@@ -1259,7 +1321,7 @@ function syncSidebarFromS(S) {
     ['e-half',S.eHalf],['e-halfcol',S.eHalfcol],['e-therm',S.eTherm],['e-oil',S.eOil],
     ['e-feed',S.eFeed],['e-vor',S.eVor],['e-ascii',S.eAscii],['e-asciicol',S.eAsciicol],
     ['e-chrab',S.eChrAb],['e-drift',S.eDrift],['e-grain',S.eGrain],['e-grainmono',S.grainmono],
-    ['e-lut',S.eLut],['e-edge',S.eEdge],
+    ['e-lut',S.eLut],['e-edge',S.eEdge],['e-displace',S.eDisplace],
   ];
   checks.forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.checked=val; });
   const sels = [
@@ -1267,6 +1329,9 @@ function syncSidebarFromS(S) {
     ['sel-crtm',S.crtm],['sel-crtmsk',S.crtmsk],['sel-crtrps',S.crtrps],
     ['sel-msdir',S.msdir],['sel-wsrc',S.wsrc],['sel-wtint',S.wtint],
     ['sel-halft',S.halft],['sel-thermp',S.thermp],['sel-vorst',S.vorst],['sel-asciich',S.asciich],
+    ['sel-displaceChannel',S.displaceChannel],['sel-displaceMode',S.displaceMode],
+    ['sel-bGlitch',S.bGlitch],['sel-bFX',S.bFX],['sel-bCRT',S.bCRT],
+    ['sel-bMosh',S.bMosh],['sel-bWater',S.bWater],['sel-bMore',S.bMore],
   ];
   sels.forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.value=val; });
   // Fix hu display
@@ -1341,15 +1406,17 @@ function loadVideo(file) {
     document.getElementById('stDims').textContent=w+'×'+h+' VID';
     document.getElementById('liveTag').style.display='none';
     document.getElementById('vidTag').style.display='';
-    vidEl.play(); vidRunning=true; renderLayersList(); vidLoop();
+    vidEl.play(); vidRunning=true; renderLayersList(); vidLoop(); updateExportUI();
   });
 }
 function stopVideo() {
+  if(isRecording && mediaRecorder) { mediaRecorder.stop(); }
   if(vidEl){vidEl.pause();try{URL.revokeObjectURL(vidEl.src);}catch(e){}vidEl=null;}
   if(vidRAF){cancelAnimationFrame(vidRAF);vidRAF=null;}
   vidRunning=false;
   document.getElementById('liveTag').style.display='';
   document.getElementById('vidTag').style.display='none';
+  if(typeof updateExportUI==='function') updateExportUI();
 }
 function vidLoop() {
   if(!vidRunning||!vidEl)return;
@@ -1381,25 +1448,25 @@ document.getElementById('btnFlipH').addEventListener('click',()=>{
   pushUndo();
   const d=L.origData.data,w=L.w,h=L.h,tmp=new Uint8ClampedArray(d.length);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const si=(y*w+x)*4,di=(y*w+(w-1-x))*4;tmp[di]=d[si];tmp[di+1]=d[si+1];tmp[di+2]=d[si+2];tmp[di+3]=d[si+3];}
-  L.origData=new ImageData(tmp,w,h); schedRender();
+  L.origData=new ImageData(tmp,w,h); invalidateLayer(L); schedRender();
 });
 document.getElementById('btnFlipV').addEventListener('click',()=>{
   const L=getActiveLayer(); if(!L||!L.origData)return;
   pushUndo();
   const d=L.origData.data,w=L.w,h=L.h,tmp=new Uint8ClampedArray(d.length);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const si=(y*w+x)*4,di=((h-1-y)*w+x)*4;tmp[di]=d[si];tmp[di+1]=d[si+1];tmp[di+2]=d[si+2];tmp[di+3]=d[si+3];}
-  L.origData=new ImageData(tmp,w,h); schedRender();
+  L.origData=new ImageData(tmp,w,h); invalidateLayer(L); schedRender();
 });
 
 // Warp clear/bake
 document.getElementById('btnClearWarp').addEventListener('click',clearWarp);
 document.getElementById('btnClearWarp2').addEventListener('click',clearWarp);
-function clearWarp(){const L=getActiveLayer();if(L&&L.wX){pushUndo();L.wX.fill(0);L.wY.fill(0);L.warpDirty=false;schedRender();}}
+function clearWarp(){const L=getActiveLayer();if(L&&L.wX){pushUndo();L.wX.fill(0);L.wY.fill(0);L.warpDirty=false;invalidateLayer(L);schedRender();}}
 document.getElementById('btnBakeWarp').addEventListener('click',()=>{
   const L=getActiveLayer(); if(!L||!L.wX||!L.warpDirty)return;
   pushUndo();
   L.origData=new ImageData(fxWarp(new Uint8ClampedArray(L.origData.data),L.w,L.h,L.wX,L.wY),L.w,L.h);
-  L.wX.fill(0);L.wY.fill(0);L.warpDirty=false; schedRender();
+  L.wX.fill(0);L.wY.fill(0);L.warpDirty=false; invalidateLayer(L); schedRender();
 });
 
 // ══════════════════════════════════════════════════════
@@ -1434,6 +1501,7 @@ function restoreState(snap) {
     L.blendMode = s.blendMode;
     L.S = s.S;
     L.mask = s.maskData ? new Float32Array(s.maskData) : null;
+    invalidateLayer(L);
   });
 }
 
@@ -1505,14 +1573,79 @@ function schedRenderWithUndo() {
 // ══════════════════════════════════════════════════════
 // EXPORT WITH SCALE
 // ══════════════════════════════════════════════════════
+// Show duration selector only when video is active
+function updateExportUI() {
+  const durSel = document.getElementById('exportDur');
+  const scaleSel = document.getElementById('exportScale');
+  if (vidRunning) {
+    durSel.style.display = '';
+    durSel.style.borderRight = 'none';
+    scaleSel.style.display = 'none';
+    document.getElementById('btnDownload').textContent = '⏺ Record';
+  } else {
+    durSel.style.display = 'none';
+    scaleSel.style.display = '';
+    document.getElementById('btnDownload').textContent = '↓ Export';
+  }
+}
+
+let isRecording = false;
+let mediaRecorder = null;
+
 document.getElementById('btnDownload').addEventListener('click', () => {
+  // ── VIDEO EXPORT ──
+  if (vidRunning) {
+    if (isRecording) {
+      // Stop early
+      mediaRecorder && mediaRecorder.stop();
+      return;
+    }
+
+    const dur = parseInt(document.getElementById('exportDur').value) * 1000;
+    const btn = document.getElementById('btnDownload');
+
+    // Capture from the main display canvas as a stream
+    const fps = 30;
+    const stream = dc.captureStream(fps);
+
+    // Pick best supported format
+    const mimeType = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4']
+      .find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+
+    const chunks = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+    mediaRecorder.ondataavailable = e => { if(e.data.size>0) chunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      isRecording = false;
+      btn.classList.remove('recording');
+      btn.textContent = '⏺ Record';
+      const blob = new Blob(chunks, { type: mimeType });
+      const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+      const a = document.createElement('a');
+      a.download = `corrupt-export.${ext}`;
+      a.href = URL.createObjectURL(blob);
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    };
+
+    mediaRecorder.start(100); // collect in 100ms chunks
+    isRecording = true;
+    btn.classList.add('recording');
+    btn.textContent = '■ Stop';
+
+    // Auto-stop after duration
+    setTimeout(() => {
+      if (isRecording && mediaRecorder) mediaRecorder.stop();
+    }, dur);
+
+    return;
+  }
+
+  // ── IMAGE EXPORT ──
   const scaleVal = parseFloat(document.getElementById('exportScale').value);
   const comp = compositeAll(imgW, imgH);
-
-  // Determine output size
   let outW, outH;
   if (scaleVal === 0) {
-    // Original size — use first layer's native dims
     const L = getActiveLayer();
     outW = L ? L.w : imgW;
     outH = L ? L.h : imgH;
@@ -1520,20 +1653,14 @@ document.getElementById('btnDownload').addEventListener('click', () => {
     outW = Math.round(imgW * scaleVal);
     outH = Math.round(imgH * scaleVal);
   }
-
-  // Draw composited result into an offscreen canvas at output size
   const exportC = document.createElement('canvas');
   exportC.width = outW; exportC.height = outH;
   const exportX = exportC.getContext('2d');
-
-  // Put current composite at canvas size, then scale up
   const tmpC = document.createElement('canvas');
   tmpC.width = imgW; tmpC.height = imgH;
   tmpC.getContext('2d').putImageData(new ImageData(comp, imgW, imgH), 0, 0);
-
-  exportX.imageSmoothingEnabled = false; // keep pixelated look
+  exportX.imageSmoothingEnabled = false;
   exportX.drawImage(tmpC, 0, 0, outW, outH);
-
   const scaleLabel = scaleVal === 0 ? 'orig' : scaleVal+'x';
   const a = document.createElement('a');
   a.download = `corrupt-export-${scaleLabel}.png`;
@@ -1544,7 +1671,7 @@ document.getElementById('btnDownload').addEventListener('click', () => {
 // Reset active layer
 document.getElementById('btnReset').addEventListener('click',()=>{
   const L=getActiveLayer(); if(!L)return;
-  pushUndo(); L.S=defaultS(); syncSidebarFromS(L.S); schedRender();
+  pushUndo(); L.S=defaultS(); invalidateLayer(L); syncSidebarFromS(L.S); schedRender();
 });
 
 // ══════════════════════════════════════════════════════
@@ -1561,55 +1688,92 @@ function doRender(){
   updateTabBadges();
 }
 
-function applyEffectPipeline(origData, w, h, S, wX, wY, warpDirty) {
+function applyEffectPipeline(origData, w, h, S, wX, wY, warpDirty, displaceData) {
   if(!origData) return new Uint8ClampedArray(w*h*4);
+
+  // Helper: blend effect result onto pre-effect state using a blend mode
+  function applyEffectBlend(mode, pre, post) {
+    if(mode==='normal') return post;
+    const r=new Uint8ClampedArray(pre);
+    for(let i=0;i<pre.length;i+=4){
+      r[i]  =blendCh(mode,post[i],pre[i]);
+      r[i+1]=blendCh(mode,post[i+1],pre[i+1]);
+      r[i+2]=blendCh(mode,post[i+2],pre[i+2]);
+      r[i+3]=post[i+3];
+    }
+    return r;
+  }
+
   let d = new Uint8ClampedArray(origData.data);
+
+  // Color/Basics
   if(S.ePxl) d=fxPixelate(d,w,h,S.pxl);
   if(S.eBlr) d=fxBoxBlur(d,w,h,S.blr);
   if(S.eShp) d=fxSharpen(d,w,h,S.shp);
-  d=fxColorGrade(d,w,h,S);
-  if(S.eInv) d=fxInvert(d);
-  if(S.ePos) d=fxPosterize(d,S.plv);
-  if(S.eRgb&&(S.rx>0||S.ry>0)) d=fxRgbShift(d,w,h,S.rx,S.ry);
-  if(S.eChrAb) d=fxChromaticAb(d,w,h,S);
-  if(S.eBlk&&S.bi>0) d=fxBlockGlitch(d,w,h,S.bi,S.bs,S.bsd);
-  if(S.eSrt) d=fxPixelSort(d,w,h,S.st,S.sd);
-  if(S.eDrift) d=fxPixelDrift(d,w,h,S);
-  if(S.eDth) d=fxDither(d,w,h,S);
-  if(S.eGrain) d=fxFilmGrain(d,w,h,S);
-  if(S.eNse) d=fxNoise(d,S.nse,S.eCnse);
-  if(S.eScl) d=fxScanlines(d,w,h,S.ssp,S.sop);
-  if(S.eVig) d=fxVignette(d,w,h,S.vig);
-  if(warpDirty) d=fxWarp(d,w,h,wX,wY);
-  if(S.eCrt) d=fxCRT(d,w,h,S);
-  if(S.eMosh||S.eMsmear||S.eMifl||S.eMqz) d=fxDatamosh(d,w,h,S);
-  if(S.eWater) d=fxWater(d,w,h,S);
-  if(S.eOil) d=fxOilPaint(d,w,h,S.oilr,S.oill);
-  if(S.eHalf) d=fxHalftone(d,w,h,S);
-  if(S.eTherm) d=fxThermal(d,w,h,S);
-  if(S.eFeed) d=fxFeedback(d,w,h,S);
-  if(S.eVor) d=fxVoronoi(d,w,h,S);
-  if(S.eAscii) d=fxAscii(d,w,h,S);
-  if(S.eLut) d=fxLUT(d,w,h,S);
-  if(S.eEdge) d=fxEdgeGlow(d,w,h,S);
-  // Master intensity blend
+  if(S.bBlend&&S.bBlend!=='normal'){const pre=new Uint8ClampedArray(d);d=fxColorGrade(d,w,h,S);if(S.eInv)d=fxInvert(d);if(S.ePos)d=fxPosterize(d,S.plv);d=applyEffectBlend(S.bBlend,pre,d);}
+  else{d=fxColorGrade(d,w,h,S);if(S.eInv)d=fxInvert(d);if(S.ePos)d=fxPosterize(d,S.plv);}
+
+  // Glitch group
+  if(S.bGlitch&&S.bGlitch!=='normal'){const pre=new Uint8ClampedArray(d);if(S.eRgb&&(S.rx>0||S.ry>0))d=fxRgbShift(d,w,h,S.rx,S.ry);if(S.eChrAb)d=fxChromaticAb(d,w,h,S);if(S.eBlk&&S.bi>0)d=fxBlockGlitch(d,w,h,S.bi,S.bs,S.bsd);if(S.eSrt)d=fxPixelSort(d,w,h,S.st,S.sd);if(S.eDrift)d=fxPixelDrift(d,w,h,S);if(S.eDth)d=fxDither(d,w,h,S);d=applyEffectBlend(S.bGlitch,pre,d);}
+  else{if(S.eRgb&&(S.rx>0||S.ry>0))d=fxRgbShift(d,w,h,S.rx,S.ry);if(S.eChrAb)d=fxChromaticAb(d,w,h,S);if(S.eBlk&&S.bi>0)d=fxBlockGlitch(d,w,h,S.bi,S.bs,S.bsd);if(S.eSrt)d=fxPixelSort(d,w,h,S.st,S.sd);if(S.eDrift)d=fxPixelDrift(d,w,h,S);if(S.eDth)d=fxDither(d,w,h,S);}
+
+  // FX group
+  if(S.bFX&&S.bFX!=='normal'){const pre=new Uint8ClampedArray(d);if(S.eGrain)d=fxFilmGrain(d,w,h,S);if(S.eNse)d=fxNoise(d,S.nse,S.eCnse);if(S.eScl)d=fxScanlines(d,w,h,S.ssp,S.sop);if(S.eVig)d=fxVignette(d,w,h,S.vig);if(warpDirty)d=fxWarp(d,w,h,wX,wY);if(S.eDisplace&&displaceData)d=fxDisplace(d,w,h,S,displaceData);d=applyEffectBlend(S.bFX,pre,d);}
+  else{if(S.eGrain)d=fxFilmGrain(d,w,h,S);if(S.eNse)d=fxNoise(d,S.nse,S.eCnse);if(S.eScl)d=fxScanlines(d,w,h,S.ssp,S.sop);if(S.eVig)d=fxVignette(d,w,h,S.vig);if(warpDirty)d=fxWarp(d,w,h,wX,wY);if(S.eDisplace&&displaceData)d=fxDisplace(d,w,h,S,displaceData);}
+
+  // CRT group
+  if(S.bCRT&&S.bCRT!=='normal'){const pre=new Uint8ClampedArray(d);if(S.eCrt)d=fxCRT(d,w,h,S);d=applyEffectBlend(S.bCRT,pre,d);}
+  else if(S.eCrt) d=fxCRT(d,w,h,S);
+
+  // Mosh group
+  if(S.bMosh&&S.bMosh!=='normal'){const pre=new Uint8ClampedArray(d);if(S.eMosh||S.eMsmear||S.eMifl||S.eMqz)d=fxDatamosh(d,w,h,S);d=applyEffectBlend(S.bMosh,pre,d);}
+  else if(S.eMosh||S.eMsmear||S.eMifl||S.eMqz) d=fxDatamosh(d,w,h,S);
+
+  // Water group
+  if(S.bWater&&S.bWater!=='normal'){const pre=new Uint8ClampedArray(d);if(S.eWater)d=fxWater(d,w,h,S);d=applyEffectBlend(S.bWater,pre,d);}
+  else if(S.eWater) d=fxWater(d,w,h,S);
+
+  // More group
+  if(S.bMore&&S.bMore!=='normal'){const pre=new Uint8ClampedArray(d);if(S.eOil)d=fxOilPaint(d,w,h,S.oilr,S.oill);if(S.eHalf)d=fxHalftone(d,w,h,S);if(S.eTherm)d=fxThermal(d,w,h,S);if(S.eFeed)d=fxFeedback(d,w,h,S);if(S.eVor)d=fxVoronoi(d,w,h,S);if(S.eAscii)d=fxAscii(d,w,h,S);if(S.eLut)d=fxLUT(d,w,h,S);if(S.eEdge)d=fxEdgeGlow(d,w,h,S);d=applyEffectBlend(S.bMore,pre,d);}
+  else{if(S.eOil)d=fxOilPaint(d,w,h,S.oilr,S.oill);if(S.eHalf)d=fxHalftone(d,w,h,S);if(S.eTherm)d=fxThermal(d,w,h,S);if(S.eFeed)d=fxFeedback(d,w,h,S);if(S.eVor)d=fxVoronoi(d,w,h,S);if(S.eAscii)d=fxAscii(d,w,h,S);if(S.eLut)d=fxLUT(d,w,h,S);if(S.eEdge)d=fxEdgeGlow(d,w,h,S);}
+
+  // Master intensity
   const mi=typeof masterIntensity!=='undefined'?masterIntensity:1;
   if(mi!==1){const orig=new Uint8ClampedArray(origData.data);for(let i=0;i<d.length;i+=4){d[i]=Math.round(orig[i]+(d[i]-orig[i])*mi);d[i+1]=Math.round(orig[i+1]+(d[i+1]-orig[i+1])*mi);d[i+2]=Math.round(orig[i+2]+(d[i+2]-orig[i+2])*mi);d[i+3]=d[i+3];}}
   return d;
 }
 
 // ══════════════════════════════════════════════════════
+// EFFECT CACHE
+// ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// EFFECT CACHE — dirty counter per layer (fast, no JSON.stringify)
+// ══════════════════════════════════════════════════════
+function invalidateLayer(L) {
+  if(L) L._dirty = (L._dirty||0) + 1;
+}
+
+// ══════════════════════════════════════════════════════
 // LAYER COMPOSITING
 // ══════════════════════════════════════════════════════
 function compositeAll(w,h) {
-  const result = new Uint8ClampedArray(w*h*4); // starts transparent black
+  const result = new Uint8ClampedArray(w*h*4);
 
   for(let i=0;i<layers.length;i++) {
     const L = layers[i];
     if(!L.visible||!L.origData) continue;
 
-    // Apply effects to this layer
-    const processed = applyEffectPipeline(L.origData, L.w, L.h, L.S, L.wX, L.wY, L.warpDirty);
+    // Cache: reuse if dirty counter unchanged
+    let processed;
+    const miKey = masterIntensity;
+    if(L._cachedResult && L._cacheVer === L._dirty && L._cacheMI === miKey) {
+      processed = L._cachedResult;
+    } else {
+      processed = applyEffectPipeline(L.origData, L.w, L.h, L.S, L.wX, L.wY, L.warpDirty, L.displaceData||null);
+      L._cachedResult = processed;
+      L._cacheVer = L._dirty;
+      L._cacheMI = miKey;
+    }
 
     const opacity = L.opacity / 100;
     const mode = L.blendMode;
@@ -1617,16 +1781,10 @@ function compositeAll(w,h) {
     for(let idx=0;idx<w*h;idx++) {
       const pi=idx*4;
       let sR=processed[pi], sG=processed[pi+1], sB=processed[pi+2], sA=processed[pi+3]/255;
-
-      // Apply mask
       if(L.mask) sA *= L.mask[idx];
       sA *= opacity;
-
       if(sA <= 0) continue;
-
       const dR=result[pi], dG=result[pi+1], dB=result[pi+2], dA=result[pi+3]/255;
-
-      // Blend
       let bR=sR, bG=sG, bB=sB;
       if(mode !== 'normal' && dA > 0) {
         bR=blendCh(mode,sR,dR); bG=blendCh(mode,sG,dG); bB=blendCh(mode,sB,dB);
@@ -1634,8 +1792,6 @@ function compositeAll(w,h) {
           [bR,bG,bB]=blendHSL(mode,sR,sG,sB,dR,dG,dB);
         }
       }
-
-      // Porter-Duff "over" composite
       const outA = sA + dA*(1-sA);
       if(outA > 0) {
         result[pi]   = Math.round((bR*sA + dR*dA*(1-sA))/outA);
@@ -1763,6 +1919,7 @@ function paintBrush(L,cx,cy,dx,dy){
     else if(tool==='contract'){const ang=Math.atan2(y-cy,x-cx);L.wX[idx]-=Math.cos(ang)*fall*2;L.wY[idx]-=Math.sin(ang)*fall*2;}
   }
   L.warpDirty=true;
+  invalidateLayer(L);
 }
 
 // ══════════════════════════════════════════════════════
@@ -2277,6 +2434,42 @@ function fxEdgeGlow(d,w,h,S){
   if(thick>1){r.set(fxBoxBlur(r,w,h,thick-1));}
   return r;
 }
+
+function fxDisplace(d, w, h, S, dispData) {
+  if(!dispData) return d;
+  const r = new Uint8ClampedArray(d);
+  const str = S.displaceStr;
+  const chan = S.displaceChannel; // 'lum','r','g','b'
+  const mode = S.displaceMode;   // 'xy','x','y','radial'
+  const dw = dispData.width, dh = dispData.height;
+  const dd = dispData.data;
+  const cx=w/2, cy=h/2;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    // Sample displacement map (tiled if different size)
+    const mx=Math.floor(x/w*dw), my=Math.floor(y/h*dh);
+    const mi=(my*dw+mx)*4;
+    let val;
+    if(chan==='r') val=dd[mi];
+    else if(chan==='g') val=dd[mi+1];
+    else if(chan==='b') val=dd[mi+2];
+    else val=(dd[mi]+dd[mi+1]+dd[mi+2])/3; // lum
+    const norm=(val/255-.5)*2; // -1..1
+    let dx=0,dy=0;
+    if(mode==='xy'){dx=norm*str;dy=norm*str;}
+    else if(mode==='x'){dx=norm*str;}
+    else if(mode==='y'){dy=norm*str;}
+    else if(mode==='radial'){
+      const ang=Math.atan2(y-cy,x-cx);
+      dx=Math.cos(ang)*norm*str;
+      dy=Math.sin(ang)*norm*str;
+    }
+    const sx=cl(Math.round(x+dx),0,w-1), sy=cl(Math.round(y+dy),0,h-1);
+    const pi=(y*w+x)*4, si=(sy*w+sx)*4;
+    r[pi]=d[si];r[pi+1]=d[si+1];r[pi+2]=d[si+2];r[pi+3]=d[si+3];
+  }
+  return r;
+}
+
 document.getElementById('btnRandomize').addEventListener('click', () => {
   const L = getActiveLayer(); if(!L) return;
   pushUndo();
@@ -2303,6 +2496,7 @@ document.getElementById('btnRandomize').addEventListener('click', () => {
   if(rb(.12)){L.S.eAscii=true;L.S.asciisz=ri(5,16);L.S.asciich=rc(Object.keys(ASCII_SETS));L.S.eAsciicol=rb(.5);}
   if(rb(.15)){L.S.eInv=true;}
   if(rb(.12)){L.S.ePxl=true;L.S.pxl=ri(3,20);}
+  invalidateLayer(L);
   syncSidebarFromS(L.S);
   schedRender();
   const btn=document.getElementById('btnRandomize');
@@ -2420,6 +2614,7 @@ function loadFileIntoLayer(file, targetIdx) {
     L.origData = data; L.w = w; L.h = h;
     L.wX = new Float32Array(w*h); L.wY = new Float32Array(w*h);
     L.warpDirty = false; L.mask = null;
+    invalidateLayer(L);
     renderLayersList();
     schedRender();
   };
@@ -2670,6 +2865,7 @@ document.getElementById('presetSelect').addEventListener('change',function(){
   const L=getActiveLayer(); if(!L) return;
   pushUndo();
   L.S=Object.assign(defaultS(),S);
+  invalidateLayer(L);
   syncSidebarFromS(L.S);
   schedRender();
 });
@@ -2677,8 +2873,111 @@ document.getElementById('presetSelect').addEventListener('change',function(){
 refreshPresetSelect();
 
 // ══════════════════════════════════════════════════════
-// ZOOM & PAN (toggle mode)
+// SPACE — BEFORE/AFTER TOGGLE
 // ══════════════════════════════════════════════════════
+let spaceHeld = false;
+document.addEventListener('keydown', e => {
+  if(e.code === 'Space' && !spaceHeld &&
+     e.target.tagName !== 'INPUT' &&
+     e.target.tagName !== 'SELECT' &&
+     e.target.tagName !== 'TEXTAREA') {
+    e.preventDefault();
+    spaceHeld = true;
+    if(!imgW) return;
+    // Draw original (no effects) directly to canvas
+    const orig = new Uint8ClampedArray(imgW * imgH * 4);
+    for(let i=0;i<layers.length;i++){
+      const L=layers[i];
+      if(!L.visible||!L.origData) continue;
+      const op=L.opacity/100;
+      for(let p=0;p<imgW*imgH;p++){
+        const pi=p*4;
+        const sA=(L.origData.data[pi+3]/255)*op;
+        if(sA<=0) continue;
+        const dA=orig[pi+3]/255;
+        const outA=sA+dA*(1-sA);
+        if(outA>0){
+          orig[pi]  =Math.round((L.origData.data[pi]  *sA+orig[pi]  *dA*(1-sA))/outA);
+          orig[pi+1]=Math.round((L.origData.data[pi+1]*sA+orig[pi+1]*dA*(1-sA))/outA);
+          orig[pi+2]=Math.round((L.origData.data[pi+2]*sA+orig[pi+2]*dA*(1-sA))/outA);
+          orig[pi+3]=Math.round(outA*255);
+        }
+      }
+    }
+    dctx.putImageData(new ImageData(orig, imgW, imgH), 0, 0);
+  }
+});
+document.addEventListener('keyup', e => {
+  if(e.code === 'Space' && spaceHeld) {
+    spaceHeld = false;
+    schedRender(); // restore processed view
+  }
+});
+
+// ══════════════════════════════════════════════════════
+// ANIMATED EFFECTS
+// ══════════════════════════════════════════════════════
+let animOn = false;
+let animRAF = null;
+let animT = 0;
+
+const btnAnimate = document.getElementById('btnAnimate');
+if(btnAnimate){
+  btnAnimate.addEventListener('click', () => {
+    animOn = !animOn;
+    btnAnimate.classList.toggle('anim-active', animOn);
+    btnAnimate.textContent = animOn ? '■ Stop' : '▶ Animate';
+    if(animOn) { animT = 0; animTick(); }
+    else { if(animRAF) cancelAnimationFrame(animRAF); animRAF = null; }
+  });
+}
+
+let animLastFrame = 0;
+function animTick() {
+  if(!animOn) return;
+  const now = performance.now();
+  // Throttle to ~30fps
+  if(now - animLastFrame < 33) { animRAF = requestAnimationFrame(animTick); return; }
+  animLastFrame = now;
+  animT += 1.2;
+
+  layers.forEach(L => {
+    if(!L.S) return;
+    let changed = false;
+    // Water — sweep phase visibly
+    if(L.S.eWater) { L.S.wphase=(L.S.wphase+3.5)%360; changed=true; }
+    // CRT ghost drift
+    if(L.S.eCrt&&L.S.crtrpa>0) { L.S.crtrpp=(L.S.crtrpp+2.5)%360; changed=true; }
+    // RGB Split pulse
+    if(L.S.eRgb) { L.S.rx=Math.min(100,Math.abs(Math.sin(animT*0.05)*25+Math.sin(animT*0.09)*15)); changed=true; }
+    // Chromatic aberration breathe
+    if(L.S.eChrAb) { L.S.chrabd=40+Math.abs(Math.sin(animT*0.04))*140; changed=true; }
+    // Pixel drift cycle seed fast
+    if(L.S.eDrift) { L.S.driftseed=((L.S.driftseed+3)%998)+1; changed=true; }
+    // Block glitch random spike
+    if(L.S.eBlk&&Math.random()<0.15) { L.S.bsd=Math.floor(Math.random()*999)+1; changed=true; }
+    // Feedback oscillate decay
+    if(L.S.eFeed) { L.S.feedd=60+Math.abs(Math.sin(animT*0.06))*35; changed=true; }
+    // Hue rotation
+    if(L.S.sa>20||L.S.eDth) { L.S.hu=(L.S.hu+0.8)%360; changed=true; }
+    // Scanlines scroll
+    if(L.S.eScl) { L.S.sop=Math.round(40+Math.sin(animT*0.07)*35); changed=true; }
+    // Voronoi cell shift
+    if(L.S.eVor) { L.S.vors=((L.S.vors+2)%998)+1; changed=true; }
+    // Halftone angle rotate
+    if(L.S.eHalf) { L.S.halfa=(L.S.halfa+1.5)%180; changed=true; }
+    if(changed) invalidateLayer(L);
+  });
+
+  if(imgW) {
+    const comp=compositeAll(imgW,imgH);
+    dctx.putImageData(new ImageData(comp,imgW,imgH),0,0);
+  }
+  animRAF=requestAnimationFrame(animTick);
+}
+
+
+
 (function(){
   const canvasCont = document.getElementById('canvasCont');
   const wrap = document.getElementById('cWrap');
