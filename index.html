@@ -158,6 +158,28 @@ header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;back
 .mix-label{font-family:'Orbitron',sans-serif;font-size:7px;font-weight:700;letter-spacing:2px;color:var(--muted);flex-shrink:0;}
 .mix-val{font-size:8px;color:var(--cyan);min-width:28px;text-align:right;flex-shrink:0;font-family:'Share Tech Mono',monospace;}
 .mix-row input[type="range"]{flex:1;}
+
+/* HISTORY STRIP */
+.history-strip{display:none;align-items:center;gap:8px;padding:6px 14px;background:var(--surf);border-top:1px solid var(--b1);flex-shrink:0;overflow:hidden;}
+.history-strip.visible{display:flex;}
+.history-label{font-family:'Orbitron',sans-serif;font-size:6.5px;font-weight:700;letter-spacing:3px;color:var(--muted);flex-shrink:0;text-transform:uppercase;}
+.history-frames{display:flex;gap:5px;overflow-x:auto;flex:1;}
+.history-frames::-webkit-scrollbar{height:2px;}
+.history-frames::-webkit-scrollbar-thumb{background:var(--b2);}
+.hist-frame{position:relative;flex-shrink:0;cursor:pointer;border:1px solid var(--b2);transition:border-color .12s;}
+.hist-frame:hover{border-color:var(--cyan);}
+.hist-frame.current{border-color:var(--cyan);box-shadow:0 0 6px rgba(0,229,255,.3);}
+.hist-frame canvas{display:block;image-rendering:pixelated;}
+.hist-frame-label{position:absolute;bottom:0;left:0;right:0;font-family:'Share Tech Mono',monospace;font-size:6px;letter-spacing:1px;color:rgba(255,255,255,.5);text-align:center;padding:1px 0;background:rgba(0,0,0,.5);}
+
+/* TILE EXPORT MODAL */
+.tile-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:flex;align-items:center;justify-content:center;}
+.tile-modal{background:var(--surf);border:1px solid var(--b2);padding:20px;display:flex;flex-direction:column;gap:12px;min-width:220px;}
+.tile-modal-title{font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:3px;color:var(--chrome);}
+.tile-grid-row{display:flex;gap:8px;}
+.tile-grid-btn{flex:1;padding:8px;background:var(--surf2);border:1px solid var(--b2);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:9px;cursor:pointer;text-align:center;transition:all .12s;}
+.tile-grid-btn:hover,.tile-grid-btn.sel{border-color:var(--acid);color:var(--acid);background:rgba(200,255,0,.06);}
+.tile-progress{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:1px;text-align:center;}
 #origCanvas{position:absolute;top:0;left:0;pointer-events:none;image-rendering:pixelated;display:none;}
 @media(max-width:768px){
   header{padding:0 8px;gap:5px;height:44px;overflow-x:auto;flex-wrap:nowrap;}
@@ -449,6 +471,7 @@ select:focus{border-color:var(--cyan);}
         <option value="30">30s</option>
       </select>
       <button class="btn btn-export" id="btnDownload">↓ Export</button>
+      <button class="btn btn-export" id="btnTileExport" title="Export tiled grid of randomized variations" style="margin-left:2px;">⊞ Tile</button>
     </div>
   </div>
 </header>
@@ -752,9 +775,6 @@ select:focus{border-color:var(--cyan);}
     <div class="tag vid" id="vidTag" style="display:none">VIDEO</div>
     <div class="tag mask-on" id="maskTag" style="display:none">MASK PAINT</div>
     <div class="vsep"></div>
-    <button class="btn btn-sm" id="btnMaskPaint">✎ Paint Mask</button>
-    <button class="btn btn-sm" id="btnMaskErase">◻ Erase Mask</button>
-    <div class="vsep"></div>
     <button class="btn btn-sm" id="btnZoomMode" title="Zoom mode — scroll to zoom, drag to pan">⌖ Zoom</button>
     <span class="zoom-readout" id="zoomReadout" style="display:none">100%</span>
     <button class="btn btn-sm" id="btnAnimate" title="Animate — advances time-based effects">▶ Animate</button>
@@ -766,6 +786,10 @@ select:focus{border-color:var(--cyan);}
     </div>
     <div class="vsep"></div>
     <div class="status"><span id="stDims">NO IMAGE</span><span class="status-ms" id="stMs">—</span></div>
+  </div>
+  <div class="history-strip" id="historyStrip">
+    <span class="history-label">HISTORY</span>
+    <div class="history-frames" id="historyFrames"></div>
   </div>
 </div>
 
@@ -1182,24 +1206,10 @@ document.getElementById('btnInvertMask').addEventListener('click', () => {
   schedRender(); drawMaskOverlay();
 });
 
-// Mask paint mode buttons
-document.getElementById('btnMaskPaint').addEventListener('click', function() {
-  if(maskPaintMode === 'paint') { maskPaintMode = false; }
-  else { maskPaintMode = 'paint'; }
-  updateMaskUI();
-});
-document.getElementById('btnMaskErase').addEventListener('click', function() {
-  if(maskPaintMode === 'erase') { maskPaintMode = false; }
-  else { maskPaintMode = 'erase'; }
-  updateMaskUI();
-});
+
 function updateMaskUI() {
-  const paintBtn = document.getElementById('btnMaskPaint');
-  const eraseBtn = document.getElementById('btnMaskErase');
   const maskTag = document.getElementById('maskTag');
-  paintBtn.classList.toggle('active-mask', maskPaintMode === 'paint');
-  eraseBtn.classList.toggle('active-erase', maskPaintMode === 'erase');
-  maskTag.style.display = maskPaintMode ? '' : 'none';
+  if(maskTag) maskTag.style.display = maskPaintMode ? '' : 'none';
   maskCanvas.style.display = maskPaintMode ? 'block' : 'none';
   if(maskPaintMode) drawMaskOverlay();
 }
@@ -1562,8 +1572,8 @@ function doRedo() {
   btn.style.animation='none'; btn.offsetHeight; btn.style.animation='undoFlash .3s ease-out';
 }
 
-document.getElementById('btnUndo').addEventListener('click', doUndo);
-document.getElementById('btnRedo').addEventListener('click', doRedo);
+document.getElementById('btnUndo').addEventListener('click', () => { doUndo(); showToast('Undo'); });
+document.getElementById('btnRedo').addEventListener('click', () => { doRedo(); showToast('Redo'); });
 
 document.addEventListener('keydown', e => {
   const meta = e.metaKey || e.ctrlKey;
@@ -1698,6 +1708,7 @@ function doRender(){
   dctx.putImageData(new ImageData(comp,imgW,imgH),0,0);
   document.getElementById('stMs').textContent=Math.round(performance.now()-t0)+'ms';
   updateTabBadges();
+  if(typeof captureHistDebounced==='function') captureHistDebounced();
 }
 
 function applyEffectPipeline(origData, w, h, S, wX, wY, warpDirty, displaceData) {
@@ -2899,7 +2910,179 @@ document.getElementById('presetSelect').addEventListener('change',function(){
 refreshPresetSelect();
 
 // ══════════════════════════════════════════════════════
-// TOAST NOTIFICATIONS
+// HISTORY PANEL
+// ══════════════════════════════════════════════════════
+const HIST_MAX = 16;
+const HIST_W = 54, HIST_H = 36;
+let histFrames = []; // {imageData, timestamp}
+let histCurrent = -1;
+
+function captureHistoryFrame() {
+  if(!imgW || !imgH) return;
+  const snap = dctx.getImageData(0, 0, dc.width, dc.height);
+  histFrames.push({ data: snap, time: Date.now() });
+  if(histFrames.length > HIST_MAX) histFrames.shift();
+  histCurrent = histFrames.length - 1;
+  renderHistoryStrip();
+}
+
+function renderHistoryStrip() {
+  const strip = document.getElementById('historyStrip');
+  const framesEl = document.getElementById('historyFrames');
+  if(histFrames.length === 0) { strip.classList.remove('visible'); return; }
+  strip.classList.add('visible');
+  framesEl.innerHTML = '';
+  histFrames.forEach((f, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'hist-frame' + (i === histCurrent ? ' current' : '');
+    const cv = document.createElement('canvas');
+    cv.width = HIST_W; cv.height = HIST_H;
+    cv.style.width = HIST_W + 'px'; cv.style.height = HIST_H + 'px';
+    const ctx = cv.getContext('2d');
+    // Draw downscaled
+    const tmpC = document.createElement('canvas');
+    tmpC.width = f.data.width; tmpC.height = f.data.height;
+    tmpC.getContext('2d').putImageData(f.data, 0, 0);
+    ctx.drawImage(tmpC, 0, 0, HIST_W, HIST_H);
+    const lbl = document.createElement('div');
+    lbl.className = 'hist-frame-label';
+    lbl.textContent = i + 1;
+    wrap.append(cv, lbl);
+    wrap.addEventListener('click', () => restoreHistoryFrame(i));
+    framesEl.appendChild(wrap);
+  });
+}
+
+function restoreHistoryFrame(idx) {
+  const f = histFrames[idx];
+  if(!f) return;
+  // Draw the snapshot directly to canvas
+  dctx.putImageData(f.data, 0, 0);
+  histCurrent = idx;
+  renderHistoryStrip();
+  showToast('History restored');
+}
+
+// Capture after every render (debounced)
+let histTimer = null;
+function captureHistDebounced() {
+  clearTimeout(histTimer);
+  histTimer = setTimeout(captureHistoryFrame, 800);
+}
+
+// ══════════════════════════════════════════════════════
+// TILED EXPORT
+// ══════════════════════════════════════════════════════
+let tileGrid = 4; // default 2x2
+
+document.getElementById('btnTileExport').addEventListener('click', () => {
+  if(!imgW) { showToast('Load an image first', 'warn'); return; }
+  // Show grid picker modal
+  const bg = document.createElement('div');
+  bg.className = 'tile-modal-bg';
+  bg.innerHTML = `
+    <div class="tile-modal">
+      <div class="tile-modal-title">TILED EXPORT</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:1px;">Each cell gets random variation</div>
+      <div class="tile-grid-row">
+        <button class="tile-grid-btn${tileGrid===4?' sel':''}" data-g="4">2×2</button>
+        <button class="tile-grid-btn${tileGrid===9?' sel':''}" data-g="9">3×3</button>
+        <button class="tile-grid-btn${tileGrid===6?' sel':''}" data-g="6">2×3</button>
+      </div>
+      <div class="tile-grid-row">
+        <button class="tile-grid-btn" id="tileGo" style="flex:1;border-color:rgba(200,255,0,.4);color:var(--acid);">⊞ Generate</button>
+        <button class="tile-grid-btn" id="tileCancel">✕</button>
+      </div>
+      <div class="tile-progress" id="tileProgress"></div>
+    </div>`;
+  document.body.appendChild(bg);
+
+  bg.querySelectorAll('[data-g]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tileGrid = parseInt(btn.dataset.g);
+      bg.querySelectorAll('[data-g]').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+    });
+  });
+
+  bg.getElementById = (id) => bg.querySelector('#'+id);
+  bg.querySelector('#tileCancel').addEventListener('click', () => bg.remove());
+
+  bg.querySelector('#tileGo').addEventListener('click', async () => {
+    const prog = bg.querySelector('#tileProgress');
+    bg.querySelector('#tileGo').disabled = true;
+    const cols = tileGrid === 9 ? 3 : tileGrid === 6 ? 2 : 2;
+    const rows = tileGrid === 9 ? 3 : tileGrid === 6 ? 3 : 2;
+    const cellW = imgW, cellH = imgH;
+    const outC = document.createElement('canvas');
+    outC.width = cellW * cols; outC.height = cellH * rows;
+    const outX = outC.getContext('2d');
+    const L = getActiveLayer(); if(!L) return;
+    const savedS = JSON.parse(JSON.stringify(L.S));
+    const total = cols * rows;
+
+    for(let i = 0; i < total; i++) {
+      prog.textContent = `Rendering ${i+1} / ${total}...`;
+      const col = i % cols, row = Math.floor(i / cols);
+      // Randomize this cell
+      const rf=(lo,hi)=>lo+Math.random()*(hi-lo);
+      const ri=(lo,hi)=>Math.floor(rf(lo,hi+1));
+      const rc=arr=>arr[ri(0,arr.length-1)];
+      const vibes=['glitch','crt','dreamy','corrupt','datamosh','vaporwave','psychedelic','analog','thermal','oil','feedback'];
+      const vibe=rc(vibes);
+      L.S=defaultS();
+      L.S.br=rf(-20,20);L.S.co=rf(-15,40);L.S.sa=rf(-30,60);L.S.ex=rf(75,140);
+      if(vibe==='glitch'){L.S.eRgb=true;L.S.rx=rf(5,60);L.S.eBlk=true;L.S.bi=rf(30,90);L.S.bs=ri(4,30);L.S.bsd=ri(1,999);}
+      else if(vibe==='crt'){L.S.eCrt=true;L.S.crtm=rc(['green','amber','blue','bw','color']);L.S.crtscn=rf(30,80);L.S.crtba=rf(20,70);L.S.crtrpa=rf(4,25);}
+      else if(vibe==='dreamy'){L.S.eBlr=true;L.S.blr=rf(2,8);L.S.sa=rf(20,80);L.S.hu=rf(0,360);}
+      else if(vibe==='corrupt'){L.S.eMosh=true;L.S.mbsz=ri(8,48);L.S.mint=rf(40,95);L.S.mseed=ri(1,999);}
+      else if(vibe==='datamosh'){L.S.eMosh=true;L.S.mbsz=ri(16,64);L.S.eMsmear=true;L.S.msdir=rc(['h','v']);L.S.mslen=rf(60,200);}
+      else if(vibe==='vaporwave'){L.S.sa=rf(40,100);L.S.hu=rf(180,320);L.S.ePos=true;L.S.plv=ri(3,8);}
+      else if(vibe==='psychedelic'){L.S.hu=rf(0,360);L.S.sa=rf(60,100);L.S.eWater=true;L.S.wfreq=rf(8,30);L.S.wamp=rf(10,40);L.S.wphase=rf(0,360);}
+      else if(vibe==='analog'){L.S.eCrt=true;L.S.crtm=rc(['bw','green','amber']);L.S.crtscn=rf(50,90);}
+      else if(vibe==='thermal'){L.S.eTherm=true;L.S.thermp=rc(['heat','infra','rainbow','neon','ice']);}
+      else if(vibe==='oil'){L.S.eOil=true;L.S.oilr=ri(2,8);L.S.oill=ri(4,24);}
+      else if(vibe==='feedback'){L.S.eFeed=true;L.S.feedn=ri(2,10);L.S.feedz=rf(101,115);}
+      L.S.eVig=true;L.S.vig=rf(30,70);
+      invalidateLayer(L);
+
+      // Render this cell
+      const comp = compositeAll(imgW, imgH);
+      const tmpC2 = document.createElement('canvas');
+      tmpC2.width = imgW; tmpC2.height = imgH;
+      tmpC2.getContext('2d').putImageData(new ImageData(comp,imgW,imgH),0,0);
+      outX.drawImage(tmpC2, col*cellW, row*cellH, cellW, cellH);
+
+      // Yield to browser
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    // Restore original S
+    L.S = savedS;
+    invalidateLayer(L);
+    schedRender();
+
+    // Download
+    prog.textContent = 'Done! Saving...';
+    const a = document.createElement('a');
+    a.download = `basedimage-tile-${cols}x${rows}.png`;
+    a.href = outC.toDataURL('image/png');
+    a.click();
+    setTimeout(() => bg.remove(), 500);
+    showToast(`${cols}×${rows} tile exported`);
+  });
+});
+
+// Fix double-click slider reset to show toast and invalidate
+document.querySelectorAll('input[type="range"][id^="s-"]').forEach(el => {
+  el.addEventListener('dblclick', () => {
+    showToast('Reset to default');
+    const L = getActiveLayer();
+    if(L) invalidateLayer(L);
+  });
+});
+
+
 // ══════════════════════════════════════════════════════
 function showToast(msg, type='ok', duration=1800) {
   const wrap = document.getElementById('toastWrap');
@@ -2916,27 +3099,11 @@ function showToast(msg, type='ok', duration=1800) {
   }, duration);
 }
 
-// Hook toasts onto key actions
-const _origDoUndo = doUndo;
-function doUndo() { _origDoUndo(); if(undoStack.length >= 0) showToast('Undo'); }
-const _origDoRedo = doRedo;
-function doRedo() { _origDoRedo(); showToast('Redo'); }
-
-document.getElementById('btnDownload').addEventListener('click', () => {
-  setTimeout(() => showToast('Exported'), 200);
-}, true);
-
-document.getElementById('btnSavePreset').addEventListener('click', () => {
-  setTimeout(() => showToast('Preset saved'), 100);
-}, true);
-
-document.getElementById('btnReset').addEventListener('click', () => {
-  showToast('Layer reset');
-}, true);
-
-document.getElementById('btnRandomize').addEventListener('click', () => {
-  showToast('Randomized');
-}, true);
+// Toast hooks on actions
+document.getElementById('btnDownload').addEventListener('click', () => setTimeout(() => showToast('Exported'), 200), true);
+document.getElementById('btnSavePreset').addEventListener('click', () => setTimeout(() => showToast('Preset saved'), 100), true);
+document.getElementById('btnReset').addEventListener('click', () => showToast('Layer reset'), true);
+document.getElementById('btnRandomize').addEventListener('click', () => showToast('Randomized'), true);
 
 // ══════════════════════════════════════════════════════
 // BRUSH CURSOR OVERLAY
