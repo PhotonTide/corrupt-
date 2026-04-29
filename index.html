@@ -1678,11 +1678,27 @@ document.getElementById('btnDownload').addEventListener('click', () => {
   const exportC = document.createElement('canvas');
   exportC.width = outW; exportC.height = outH;
   const exportX = exportC.getContext('2d');
+
+  // Draw effects layer
   const tmpC = document.createElement('canvas');
   tmpC.width = imgW; tmpC.height = imgH;
   tmpC.getContext('2d').putImageData(new ImageData(comp, imgW, imgH), 0, 0);
   exportX.imageSmoothingEnabled = false;
   exportX.drawImage(tmpC, 0, 0, outW, outH);
+
+  // Apply mix — draw original composite on top at mixAmt opacity
+  if (mixAmt > 0) {
+    const orig = buildOrigComposite();
+    if (orig) {
+      const origC = document.createElement('canvas');
+      origC.width = imgW; origC.height = imgH;
+      origC.getContext('2d').putImageData(new ImageData(orig, imgW, imgH), 0, 0);
+      exportX.globalAlpha = mixAmt;
+      exportX.drawImage(origC, 0, 0, outW, outH);
+      exportX.globalAlpha = 1;
+    }
+  }
+
   const scaleLabel = scaleVal === 0 ? 'orig' : scaleVal+'x';
   const a = document.createElement('a');
   a.download = `basedimage-export-${scaleLabel}.png`;
