@@ -1715,17 +1715,38 @@ document.getElementById('btnReset').addEventListener('click',()=>{
 // ══════════════════════════════════════════════════════
 // RENDER PIPELINE
 // ══════════════════════════════════════════════════════
-function schedRender(){if(!layers.length||!imgW)return;if(!renderPending){renderPending=true;requestAnimationFrame(doRender);}}
+// ── Render scheduling with frame-drop: always renders latest, never queues stale frames ──
+let renderNeeded = false;
+
+function schedRender(){
+  if(!layers.length||!imgW) return;
+  renderNeeded = true;
+  if(!renderPending){
+    renderPending = true;
+    requestAnimationFrame(doRender);
+  }
+}
+
 function doRender(){
-  renderPending=false;
-  if(!layers.length||!imgW)return;
-  const t0=performance.now();
-  const comp=compositeAll(imgW,imgH);
-  dctx.putImageData(new ImageData(comp,imgW,imgH),0,0);
-  document.getElementById('stMs').textContent=Math.round(performance.now()-t0)+'ms';
+  renderPending = false;
+  renderNeeded = false;
+  if(!layers.length||!imgW) return;
+  const t0 = performance.now();
+  const comp = compositeAll(imgW, imgH);
+  dctx.putImageData(new ImageData(comp, imgW, imgH), 0, 0);
+  const ms = Math.round(performance.now()-t0);
+  document.getElementById('stMs').textContent = ms + 'ms';
   updateTabBadges();
+  // If slider moved again while we were rendering, fire one more frame
+  if(renderNeeded){
+    renderPending = true;
+    requestAnimationFrame(doRender);
+  }
   if(typeof captureHistDebounced==='function') captureHistDebounced();
 }
+
+
+
 
 function applyEffectPipeline(origData, w, h, S, wX, wY, warpDirty, displaceData) {
   if(!origData) return new Uint8ClampedArray(w*h*4);
@@ -1772,6 +1793,7 @@ function applyEffectPipeline(origData, w, h, S, wX, wY, warpDirty, displaceData)
   if(S.bWater&&S.bWater!=='normal'){const pre=new Uint8ClampedArray(d);if(S.eWater)d=fxWater(d,w,h,S);d=applyEffectBlend(S.bWater,pre,d);}
   else if(S.eWater) d=fxWater(d,w,h,S);
 
+  // More group
   // More group
   if(S.bMore&&S.bMore!=='normal'){const pre=new Uint8ClampedArray(d);if(S.eOil)d=fxOilPaint(d,w,h,S.oilr,S.oill);if(S.eHalf)d=fxHalftone(d,w,h,S);if(S.eTherm)d=fxThermal(d,w,h,S);if(S.eFeed)d=fxFeedback(d,w,h,S);if(S.eVor)d=fxVoronoi(d,w,h,S);if(S.eAscii)d=fxAscii(d,w,h,S);if(S.eLut)d=fxLUT(d,w,h,S);if(S.eEdge)d=fxEdgeGlow(d,w,h,S);d=applyEffectBlend(S.bMore,pre,d);}
   else{if(S.eOil)d=fxOilPaint(d,w,h,S.oilr,S.oill);if(S.eHalf)d=fxHalftone(d,w,h,S);if(S.eTherm)d=fxThermal(d,w,h,S);if(S.eFeed)d=fxFeedback(d,w,h,S);if(S.eVor)d=fxVoronoi(d,w,h,S);if(S.eAscii)d=fxAscii(d,w,h,S);if(S.eLut)d=fxLUT(d,w,h,S);if(S.eEdge)d=fxEdgeGlow(d,w,h,S);}
