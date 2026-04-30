@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BASEDIMAGE — Image Distortion Lab</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script type="module">
+// Pre-load Transformers.js as a module and expose globally
+import { AutoModel, AutoProcessor, RawImage, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.2/dist/transformers.min.js';
+env.allowLocalModels = false;
+env.useBrowserCache = true;
+window.__tfAutoModel = AutoModel;
+window.__tfAutoProcessor = AutoProcessor;
+window.__tfRawImage = RawImage;
+window.__tfReady = true;
+console.log('Transformers.js loaded OK');
+</script>
 <style>
 :root{
   --bg:#06060a;--surf:#0b0b12;--surf2:#10101a;--surf3:#161622;
@@ -347,7 +358,7 @@ select:focus{border-color:var(--cyan);}
 .toast.warn{border-color:rgba(255,149,0,.4);color:var(--orange);}
 #dc{display:block;max-width:100%;max-height:calc(100vh - 128px);cursor:crosshair;image-rendering:pixelated;box-shadow:0 0 0 1px rgba(0,229,255,.15),0 0 60px rgba(0,0,0,.9),0 0 0 1px var(--b2);}
 .canvas-container.has-image #dc{box-shadow:0 0 0 1px rgba(0,229,255,.25),0 0 40px rgba(0,229,255,.04),0 0 80px rgba(0,0,0,.9);}
-#maskCanvas{position:absolute;top:0;left:0;pointer-events:none;opacity:.55;display:none;}
+#maskCanvas{position:absolute;top:0;left:0;pointer-events:none;display:none;width:100%;height:100%;}
 .upload-zone{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer;transition:background .2s;}
 .upload-zone:hover{background:rgba(0,229,255,.02);}
 .upload-hex{position:relative;width:72px;height:72px;display:flex;align-items:center;justify-content:center;}
@@ -396,6 +407,9 @@ select:focus{border-color:var(--cyan);}
 .layer-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:9px;padding:0;flex-shrink:0;opacity:0;transition:all .1s;}
 .layer-item:hover .layer-del{opacity:.6;}
 .layer-del:hover{color:var(--mag)!important;opacity:1!important;}
+.layer-move{background:none;border:none;color:var(--muted);cursor:pointer;font-size:9px;padding:0 2px;flex-shrink:0;opacity:0;transition:opacity .1s;line-height:1;}
+.layer-item:hover .layer-move{opacity:.7;}
+.layer-move:hover{color:var(--cyan)!important;opacity:1!important;}
 .layer-mask-dot{width:6px;height:6px;border-radius:50%;background:var(--mag);flex-shrink:0;opacity:0;box-shadow:0 0 4px var(--mag);}
 .layer-mask-dot.has-mask{opacity:1;}
 .lp-section{padding:8px 10px;border-top:1px solid var(--b1);flex-shrink:0;position:relative;}
@@ -848,9 +862,29 @@ select:focus{border-color:var(--cyan);}
         <span id="maskHardnessVal" style="color:var(--mag);min-width:24px;text-align:right;font-size:8px">70</span>
       </div>
       <div class="mask-action-row">
-        <button class="btn btn-sm btn-full" id="btnClearMask" style="flex:1">Clear ◻</button>
+        <button class="btn btn-sm btn-full" id="btnMaskPaint" style="flex:1;color:var(--mag)">✎ Paint</button>
+        <button class="btn btn-sm btn-full" id="btnMaskErase" style="flex:1;color:var(--cyan)">◻ Erase</button>
+      </div>
+      <div class="mask-action-row" style="margin-top:2px;">
+        <button class="btn btn-sm btn-full" id="btnClearMask" style="flex:1">Clear</button>
         <button class="btn btn-sm btn-full" id="btnInvertMask" style="flex:1">Invert</button>
         <button class="btn btn-sm btn-full" id="btnFillMask" style="flex:1">Fill ■</button>
+      </div>
+      <div class="mask-action-row" style="margin-top:4px;">
+        <button class="btn btn-sm btn-full btn-rmbg" id="btnRemoveBG" style="flex:1;border-color:rgba(200,255,0,.5);color:var(--acid)">✂ Remove BG</button>
+      </div>
+      <div id="rmbgProgress" style="display:none;padding:4px 0;">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:2px;margin-bottom:3px;" id="rmbgStatus">Loading model...</div>
+        <div style="height:2px;background:var(--surf3);border-radius:1px;overflow:hidden;">
+          <div id="rmbgBar" style="height:100%;width:0%;background:var(--acid);transition:width .2s;"></div>
+        </div>
+      </div>
+      <div id="rmbgRefine" style="display:none;padding:4px 0;gap:6px;flex-direction:column;">
+        <div class="cg">
+          <div class="cl">Threshold <span class="v g" id="v-rmbgThresh">50</span></div>
+          <input type="range" id="s-rmbgThresh" min="0" max="100" value="50" style="width:100%">
+        </div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:1px;">Drag to refine cut · Paint mask to touch up</div>
       </div>
     </div>
   </div>
@@ -1210,9 +1244,20 @@ document.getElementById('btnInvertMask').addEventListener('click', () => {
 function updateMaskUI() {
   const maskTag = document.getElementById('maskTag');
   if(maskTag) maskTag.style.display = maskPaintMode ? '' : 'none';
-  maskCanvas.style.display = maskPaintMode ? 'block' : 'none';
-  if(maskPaintMode) drawMaskOverlay();
+  const pb = document.getElementById('btnMaskPaint');
+  const eb = document.getElementById('btnMaskErase');
+  if(pb) pb.style.background = maskPaintMode==='paint' ? 'rgba(255,45,120,.15)' : '';
+  if(eb) eb.style.background = maskPaintMode==='erase' ? 'rgba(0,229,255,.15)' : '';
 }
+
+document.getElementById('btnMaskPaint').addEventListener('click', () => {
+  maskPaintMode = maskPaintMode === 'paint' ? false : 'paint';
+  updateMaskUI();
+});
+document.getElementById('btnMaskErase').addEventListener('click', () => {
+  maskPaintMode = maskPaintMode === 'erase' ? false : 'erase';
+  updateMaskUI();
+});
 
 function updateLayerControls() {
   const L = getActiveLayer();
@@ -1284,7 +1329,38 @@ function renderLayersList() {
       setActiveLayer(Math.min(activeLayerIdx, layers.length-1));
     });
 
-    div.append(vis, thumb, name, maskDot, del);
+    // Up/Down order buttons
+    const moveUp = document.createElement('button');
+    moveUp.className = 'layer-move';
+    moveUp.textContent = '↑';
+    moveUp.title = 'Move layer up';
+    moveUp.style.cssText = 'font-size:9px;padding:1px 3px;opacity:'+(i<layers.length-1?'1':'0.2')+';';
+    moveUp.addEventListener('click', e => {
+      e.stopPropagation();
+      if(i >= layers.length-1) return;
+      pushUndo();
+      const tmp = layers[i]; layers[i] = layers[i+1]; layers[i+1] = tmp;
+      if(activeLayerIdx === i) activeLayerIdx = i+1;
+      else if(activeLayerIdx === i+1) activeLayerIdx = i;
+      renderLayersList(); schedRender();
+    });
+
+    const moveDown = document.createElement('button');
+    moveDown.className = 'layer-move';
+    moveDown.textContent = '↓';
+    moveDown.title = 'Move layer down';
+    moveDown.style.cssText = 'font-size:9px;padding:1px 3px;opacity:'+(i>0?'1':'0.2')+';';
+    moveDown.addEventListener('click', e => {
+      e.stopPropagation();
+      if(i <= 0) return;
+      pushUndo();
+      const tmp = layers[i]; layers[i] = layers[i-1]; layers[i-1] = tmp;
+      if(activeLayerIdx === i) activeLayerIdx = i-1;
+      else if(activeLayerIdx === i-1) activeLayerIdx = i;
+      renderLayersList(); schedRender();
+    });
+
+    div.append(vis, thumb, name, maskDot, moveUp, moveDown, del);
     div.addEventListener('click', () => setActiveLayer(i));
     el.appendChild(div);
 
@@ -1461,7 +1537,17 @@ document.getElementById('fi2').addEventListener('change',function(){if(this.file
 document.getElementById('fiVid').addEventListener('change',function(){if(this.files&&this.files[0])loadVideo(this.files[0]);this.value='';}); 
 const cc=document.getElementById('canvasCont');
 cc.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();});
-cc.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();const f=e.dataTransfer.files[0];if(f)loadFile(f);});
+cc.addEventListener('drop',e=>{
+  e.preventDefault();e.stopPropagation();
+  const f=e.dataTransfer.files[0];
+  if(!f) return;
+  if(layers.length > 0 && imgW && f.type.startsWith('image/')) {
+    // Already have content — load into active layer to preserve stack
+    loadFileIntoLayer(f, activeLayerIdx);
+  } else {
+    loadFile(f);
+  }
+});
 document.addEventListener('paste',e=>{const item=[...e.clipboardData.items].find(i=>i.type.startsWith('image/'));if(item)loadFile(item.getAsFile());});
 
 // Flip
@@ -1551,6 +1637,7 @@ function doUndo() {
   updateLayerControls();
   renderLayersList();
   schedRender();
+  drawMaskOverlay();
   updateUndoButtons();
   const btn = document.getElementById('btnUndo');
   btn.style.animation='none'; btn.offsetHeight; btn.style.animation='undoFlash .3s ease-out';
@@ -1567,6 +1654,7 @@ function doRedo() {
   updateLayerControls();
   renderLayersList();
   schedRender();
+  drawMaskOverlay();
   updateUndoButtons();
   const btn = document.getElementById('btnRedo');
   btn.style.animation='none'; btn.offsetHeight; btn.style.animation='undoFlash .3s ease-out';
@@ -1709,7 +1797,7 @@ document.getElementById('btnDownload').addEventListener('click', () => {
 // Reset active layer
 document.getElementById('btnReset').addEventListener('click',()=>{
   const L=getActiveLayer(); if(!L)return;
-  pushUndo(); L.S=defaultS(); invalidateLayer(L); syncSidebarFromS(L.S); schedRender();
+  pushUndo(); L.S=defaultS(); invalidateLayer(L); syncSidebarFromS(L.S); schedRender(); drawMaskOverlay();
 });
 
 // ══════════════════════════════════════════════════════
@@ -1899,35 +1987,41 @@ function blendHSL(mode,sR,sG,sB,dR,dG,dB){
 // MASK PAINTING ON CANVAS
 // ══════════════════════════════════════════════════════
 function drawMaskOverlay() {
-  const L=getActiveLayer();
-  if(!L||!L.mask) { maskCtx.clearRect(0,0,maskCanvas.width,maskCanvas.height); return; }
-  const imgData=maskCtx.createImageData(imgW,imgH);
-  for(let i=0;i<L.mask.length;i++){
-    const v=1-L.mask[i]; // show red where masked out
-    imgData.data[i*4]=200; imgData.data[i*4+1]=0; imgData.data[i*4+2]=0;
-    imgData.data[i*4+3]=Math.round(v*180);
-  }
-  maskCtx.putImageData(imgData,0,0);
+  // No overlay — the composited canvas already shows mask transparency correctly
+  maskCtx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
 }
 
 function getCanvasPos(e) {
-  const rect=dc.getBoundingClientRect();
-  return {x:Math.round((e.clientX-rect.left)*imgW/rect.width), y:Math.round((e.clientY-rect.top)*imgH/rect.height)};
+  const rect = dc.getBoundingClientRect();
+  const scaleX = imgW / rect.width;
+  const scaleY = imgH / rect.height;
+  const x = Math.round((e.clientX - rect.left) * scaleX);
+  const y = Math.round((e.clientY - rect.top) * scaleY);
+  const outside = x < 0 || x >= imgW || y < 0 || y >= imgH;
+  return {
+    x: Math.max(0, Math.min(imgW - 1, x)),
+    y: Math.max(0, Math.min(imgH - 1, y)),
+    outside
+  };
 }
 
-function paintMask(x,y) {
-  const L=getActiveLayer(); if(!L||!L.mask) return;
-  const rad=Math.round(maskBrushSz * (imgW/dc.getBoundingClientRect().width));
-  const hard=maskHardness/100;
-  const val=maskPaintMode==='paint'?1:0;
-  const x0=Math.max(0,x-rad), x1=Math.min(imgW-1,x+rad);
-  const y0=Math.max(0,y-rad), y1=Math.min(imgH-1,y+rad);
-  for(let py=y0;py<=y1;py++) for(let px=x0;px<=x1;px++){
-    const dist=Math.sqrt((px-x)**2+(py-y)**2)/rad;
-    if(dist>1)continue;
-    const falloff=dist<hard?1:1-(dist-hard)/(1-hard+0.001);
-    const idx=py*imgW+px;
-    L.mask[idx]=Math.max(0,Math.min(1, val===1 ? Math.min(1,L.mask[idx]+falloff) : Math.max(0,L.mask[idx]-falloff)));
+function paintMask(x, y) {
+  const L = getActiveLayer(); if(!L || !L.mask) return;
+  // Ignore strokes outside image bounds
+  if(x < 0 || x >= L.w || y < 0 || y >= L.h) return;
+  const rad = Math.round(maskBrushSz * (imgW / dc.getBoundingClientRect().width));
+  const hard = maskHardness / 100;
+  const val = maskPaintMode === 'paint' ? 1 : 0;
+  const x0 = Math.max(0, x - rad), x1 = Math.min(L.w - 1, x + rad);
+  const y0 = Math.max(0, y - rad), y1 = Math.min(L.h - 1, y + rad);
+  for(let py = y0; py <= y1; py++) for(let px = x0; px <= x1; px++) {
+    const dist = Math.sqrt((px-x)**2 + (py-y)**2) / rad;
+    if(dist > 1) continue;
+    const falloff = dist < hard ? 1 : 1 - (dist - hard) / (1 - hard + 0.001);
+    const idx = py * L.w + px;
+    L.mask[idx] = val === 1
+      ? Math.min(1, L.mask[idx] + falloff)
+      : Math.max(0, L.mask[idx] - falloff);
   }
   drawMaskOverlay();
   schedRender();
@@ -1937,9 +2031,11 @@ dc.addEventListener('mousedown',e=>{
   if(maskPaintMode){
     const L=getActiveLayer();
     if(L&&!L.mask)L.mask=new Float32Array(L.w*L.h).fill(1);
-    isPainting=true; paintMask(...Object.values(getCanvasPos(e)));
+    const p=getCanvasPos(e);
+    if(p.outside) return;
+    pushUndo(); // snapshot BEFORE stroke begins
+    isPainting=true; paintMask(p.x,p.y);
   } else {
-    // Liquify warp
     if(!layers.length||!imgW)return;
     const L=getActiveLayer(); if(!L)return;
     L._warpStart=getCanvasPos(e);
@@ -1947,18 +2043,16 @@ dc.addEventListener('mousedown',e=>{
   }
 });
 dc.addEventListener('mousemove',e=>{
-  if(maskPaintMode&&isPainting){ const p=getCanvasPos(e); paintMask(p.x,p.y); return; }
+  if(maskPaintMode&&isPainting){ const p=getCanvasPos(e); if(!p.outside) paintMask(p.x,p.y); return; }
   const L=getActiveLayer(); if(!L||!L._isWarping)return;
   const p=getCanvasPos(e);
   if(L._warpStart){ paintBrush(L,p.x,p.y,p.x-L._warpStart.x,p.y-L._warpStart.y); schedRender(); }
   L._warpStart=p;
 });
 dc.addEventListener('mouseup',()=>{
-  if(isPainting && maskPaintMode) pushUndo();
   isPainting=false;const L=getActiveLayer();if(L)L._isWarping=false;
 });
 dc.addEventListener('mouseleave',()=>{
-  if(isPainting && maskPaintMode) pushUndo();
   isPainting=false;const L=getActiveLayer();if(L)L._isWarping=false;
 });
 
@@ -2948,6 +3042,188 @@ document.getElementById('presetSelect').addEventListener('change',function(){
 refreshPresetSelect();
 
 // ══════════════════════════════════════════════════════
+// REMOVE BACKGROUND — BRIA RMBG-1.4 via Transformers.js
+// ══════════════════════════════════════════════════════
+let rmbgModel = null;
+let rmbgProcessor = null;
+let rmbgLoading = false;
+
+document.getElementById('btnRemoveBG').addEventListener('click', async () => {
+  const L = getActiveLayer();
+  if(!L || !L.origData) { showToast('Load an image first', 'warn'); return; }
+  if(rmbgLoading) return;
+
+  const btn = document.getElementById('btnRemoveBG');
+  const prog = document.getElementById('rmbgProgress');
+  const status = document.getElementById('rmbgStatus');
+  const bar = document.getElementById('rmbgBar');
+
+  rmbgLoading = true;
+  btn.disabled = true;
+  btn.textContent = '⏳ Working...';
+  prog.style.display = 'block';
+
+  try {
+    let waited = 0;
+    while(!window.__tfReady && waited < 15000) {
+      await new Promise(r => setTimeout(r, 200));
+      waited += 200;
+    }
+    if(!window.__tfReady) throw new Error('Transformers.js failed to load');
+
+    const AutoModel = window.__tfAutoModel;
+    const AutoProcessor = window.__tfAutoProcessor;
+    const RawImage = window.__tfRawImage;
+    const MODEL_ID = 'briaai/RMBG-1.4';
+
+    if(!rmbgModel || !rmbgProcessor) {
+      status.textContent = 'Downloading model (~170MB, cached after)...';
+      bar.style.width = '8%';
+      const onProgress = (p) => {
+        if(p.status === 'progress') {
+          const loaded = Math.round((p.loaded||0)/1024/1024);
+          const total = Math.round((p.total||170)/1024/1024);
+          const pct = p.total ? Math.round((p.loaded/p.total)*75)+8 : 40;
+          bar.style.width = Math.min(88, pct) + '%';
+          status.textContent = 'Downloading... ' + loaded + 'MB / ' + total + 'MB';
+        } else if(p.status === 'initiate') {
+          status.textContent = 'Loading ' + (p.file||'').split('/').pop() + '...';
+        }
+      };
+
+      // Processor config must be specified manually for RMBG-1.4
+      const processorConfig = {
+        do_normalize: true,
+        do_pad: false,
+        do_rescale: true,
+        do_resize: true,
+        image_mean: [0.5, 0.5, 0.5],
+        image_std: [1, 1, 1],
+        resample: 2,
+        rescale_factor: 0.00392156862745098,
+        size: { width: 1024, height: 1024 },
+      };
+
+      [rmbgProcessor, rmbgModel] = await Promise.all([
+        AutoProcessor.from_pretrained(MODEL_ID, {
+          config: processorConfig,
+          progress_callback: onProgress
+        }),
+        AutoModel.from_pretrained(MODEL_ID, {
+          config: { model_type: 'custom' },
+          dtype: 'fp32',
+          progress_callback: onProgress
+        })
+      ]);
+      console.log('RMBG-1.4 loaded');
+    }
+
+    status.textContent = 'Processing image...';
+    bar.style.width = '92%';
+
+    // Load image
+    const tmpC = document.createElement('canvas');
+    tmpC.width = L.w; tmpC.height = L.h;
+    tmpC.getContext('2d').putImageData(L.origData, 0, 0);
+    const image = await RawImage.fromURL(tmpC.toDataURL('image/png'));
+    console.log('Input image:', image.width, 'x', image.height);
+
+    // Preprocess
+    const { pixel_values } = await rmbgProcessor(image);
+    console.log('Processor inputs keys, pixel_values shape:', pixel_values.dims);
+
+    // RMBG-1.4 ONNX model expects input named 'input', not 'pixel_values'
+    const outputs = await rmbgModel({ input: pixel_values });
+    console.log('Model outputs:', Object.keys(outputs));
+
+    bar.style.width = '100%';
+    status.textContent = 'Applying mask...';
+
+    // outTensor shape is [1, 1, H, W] — extract dims and raw data
+    const outTensor = outputs.output || outputs.logits || outputs.pred_masks || Object.values(outputs)[0];
+    if(!outTensor) throw new Error('No output tensor. Keys: ' + Object.keys(outputs).join(', '));
+    console.log('Output tensor dims:', outTensor.dims);
+
+    const dims = outTensor.dims; // [1, 1, H, W]
+    const mh = dims[dims.length - 2];
+    const mw = dims[dims.length - 1];
+    const rawData = outTensor.data; // flat Float32Array, length = mh*mw
+
+    // Apply sigmoid and draw to canvas at model resolution
+    const maskC = document.createElement('canvas');
+    maskC.width = mw; maskC.height = mh;
+    const mctx = maskC.getContext('2d');
+    const idata = mctx.createImageData(mw, mh);
+    for(let i = 0; i < mw * mh; i++) {
+      // Output is already 0-1 probabilities — no sigmoid needed
+      const v = Math.round(rawData[i] * 255);
+      idata.data[i*4] = idata.data[i*4+1] = idata.data[i*4+2] = v;
+      idata.data[i*4+3] = 255;
+    }
+    mctx.putImageData(idata, 0, 0);
+
+    // Scale mask to layer dimensions using canvas (GPU-accelerated)
+    const scaledC = document.createElement('canvas');
+    scaledC.width = L.w; scaledC.height = L.h;
+    const sctx = scaledC.getContext('2d');
+    sctx.imageSmoothingEnabled = true;
+    sctx.imageSmoothingQuality = 'high';
+    sctx.drawImage(maskC, 0, 0, L.w, L.h);
+    const scaled = sctx.getImageData(0, 0, L.w, L.h);
+
+    const newMask = new Float32Array(L.w * L.h);
+    for(let i = 0; i < newMask.length; i++) newMask[i] = scaled.data[i*4] / 255;
+
+    pushUndo();
+    L.mask = newMask;
+    L._rmbgRawMask = newMask.slice(); // store raw for threshold re-apply
+    invalidateLayer(L);
+    if(typeof drawMaskOverlay === 'function') drawMaskOverlay();
+    schedRender();
+
+    // Show threshold slider and activate mask paint for refinement
+    document.getElementById('rmbgRefine').style.display = 'flex';
+    maskPaintMode = 'paint';
+    if(typeof updateMaskUI === 'function') updateMaskUI();
+    showToast('Background removed — refine with threshold or paint ✂');
+
+  } catch(err) {
+    console.error('RMBG failed:', err);
+    showToast('Failed: ' + (err.message||String(err)).slice(0,60), 'warn');
+    rmbgModel = null;
+    rmbgProcessor = null;
+  } finally {
+    rmbgLoading = false;
+    btn.disabled = false;
+    btn.textContent = '✂ Remove BG';
+    prog.style.display = 'none';
+    bar.style.width = '0%';
+  }
+});
+
+// Threshold slider — document-level so it works regardless of display state
+document.addEventListener('input', function(e) {
+  if(e.target.id !== 's-rmbgThresh') return;
+  const thresh = parseInt(e.target.value) / 100;
+  const vEl = document.getElementById('v-rmbgThresh');
+  if(vEl) vEl.textContent = e.target.value;
+  const L = getActiveLayer();
+  if(!L || !L._rmbgRawMask) return;
+  const raw = L._rmbgRawMask;
+  const newMask = new Float32Array(raw.length);
+  const feather = 0.08;
+  for(let i = 0; i < raw.length; i++) {
+    const v = raw[i];
+    if(v >= thresh + feather) newMask[i] = 1;
+    else if(v <= thresh - feather) newMask[i] = 0;
+    else newMask[i] = (v - (thresh - feather)) / (feather * 2);
+  }
+  L.mask = newMask;
+  invalidateLayer(L);
+  if(typeof drawMaskOverlay === 'function') drawMaskOverlay();
+  schedRender();
+});
+// ══════════════════════════════════════════════════════
 // HISTORY PANEL
 // ══════════════════════════════════════════════════════
 const HIST_MAX = 16;
@@ -3208,13 +3484,18 @@ dcCont.addEventListener('mousemove', e => {
   lastMouseX = e.clientX; lastMouseY = e.clientY;
   const L = getActiveLayer();
   const isBrushMode = maskPaintMode || (L && L.S && ['warp','swirl','expand','contract'].includes(L.S.lTool));
-  if(isBrushMode && imgW) {
+  // Check if mouse is over the actual dc canvas (not just the container)
+  const dcRect = dc.getBoundingClientRect();
+  const overCanvas = e.clientX >= dcRect.left && e.clientX <= dcRect.right &&
+                     e.clientY >= dcRect.top  && e.clientY <= dcRect.bottom;
+  if(isBrushMode && imgW && overCanvas) {
     dcCont.classList.add(maskPaintMode ? 'mask-mode' : 'warp-mode');
     dcCont.classList.remove(maskPaintMode ? 'warp-mode' : 'mask-mode');
     drawBrushCursor(e.clientX, e.clientY);
   } else {
     dcCont.classList.remove('mask-mode','warp-mode');
     hideBrushCursor();
+    if(!overCanvas) isPainting = false; // stop paint stroke if leaving canvas
   }
 });
 dcCont.addEventListener('mouseleave', () => { hideBrushCursor(); dcCont.classList.remove('mask-mode','warp-mode'); });
